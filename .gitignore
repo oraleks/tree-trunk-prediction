@@ -1,0 +1,22 @@
+# Large practice/split data directories
+MODEL_PRACTICE/
+model_train_set/
+
+# Model artifacts (large binary files)
+best_model.joblib
+*.joblib
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Shapefile lock files
+*.sr.lock
+
+# IDE / Claude
+.claude/
+
+# OS files
+Thumbs.db
+.DS_Store

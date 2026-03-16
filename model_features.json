@@ -1,0 +1,26 @@
+{
+  "features": [
+    "area",
+    "perimeter",
+    "perimeter_to_area",
+    "compactness",
+    "convexity",
+    "eccentricity",
+    "major_axis",
+    "minor_axis",
+    "aspect_ratio",
+    "mrr_area_ratio",
+    "n_vertices",
+    "boundary_sinuosity",
+    "n_concavities",
+    "mean_radius",
+    "radius_std",
+    "radius_cv",
+    "radius_ratio",
+    "equivalent_diameter",
+    "convex_hull_deficit",
+    "l_ratio"
+  ],
+  "target_transform": "raw",
+  "model_type": "Ridge"
+}
