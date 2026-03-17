@@ -61,22 +61,41 @@ gdf = gpd.read_file('your_crowns.shp').to_crs(epsg=2039)
 features = extract_features(gdf)
 ```
 
+## Jupyter Notebooks
+
+The full workflow is available as interactive notebooks:
+
+| Notebook | Description |
+|----------|-------------|
+| [01_feature_extraction.ipynb](01_feature_extraction.ipynb) | Load shapefile, extract 5- and 20-feature sets, EDA, correlation analysis |
+| [02_model_training.ipynb](02_model_training.ipynb) | Train Ridge/RF/XGBoost/CatBoost, cross-validation, diagnostic plots, save models |
+| [03_predict_new_data.ipynb](03_predict_new_data.ipynb) | Apply trained model to a new unseen shapefile, visualize and save predictions |
+| [04_old_model_evaluation.ipynb](04_old_model_evaluation.ipynb) | Evaluate the original 5-feature CatBoost model with rigorous methodology |
+
 ## Project Structure
 
 ```
-train_evaluate_model.py   # Main pipeline: train, evaluate, plot
-feature_utils.py          # Morphological feature extraction
-train_set_validated.shp   # Training dataset (+ .dbf, .shx, .prj, .cpg)
-results.MD                # Detailed results analysis
-evaluation_report.txt     # Model comparison metrics
-model_features.json       # Feature list and model config
-plots/                    # Diagnostic visualizations
-old_model/                # Previous CatBoost-based implementation
+01_feature_extraction.ipynb   # Notebook: feature extraction and EDA
+02_model_training.ipynb       # Notebook: model training and evaluation
+03_predict_new_data.ipynb     # Notebook: predict on new data
+04_old_model_evaluation.ipynb # Notebook: old model evaluation
+train_evaluate_model.py       # Standalone pipeline script
+feature_utils.py              # Morphological feature extraction module
+eval_old_model.py             # Old model evaluation script
+dataset_size_analysis.py      # Learning curve extrapolation analysis
+train_set_validated.shp       # Training dataset (+ .dbf, .shx, .prj, .cpg)
+results.MD                    # Detailed results analysis
+evaluation_report.txt         # Model comparison metrics
+model_features.json           # Feature list and model config
+plots/                        # Diagnostic visualizations
+old_model/                    # Previous CatBoost-based implementation
 ```
 
 ## Key Findings
 
-1. **Ridge regression outperformed** all tree-based ensembles (Random Forest, XGBoost, CatBoost), indicating the relationship is largely linear.
-2. **Perimeter is the single most important predictor** by a wide margin.
-3. **More training data would help** -- the learning curve has not plateaued.
-4. **Error scales with cluster size** -- reliable for 2-10 trees, less so for 20+.
+1. **Ridge regression outperformed** all tree-based ensembles (Random Forest, XGBoost, CatBoost) on the full range, indicating the relationship is largely linear.
+2. **5 features match 20 features** in performance -- the simpler model is recommended for deployment.
+3. **Perimeter is the single most important predictor** for the full range; **compactness** overtakes it for the ≤8 subset.
+4. **CatBoost outperforms Ridge on ≤8 trees** -- nonlinear shape relationships matter more for small clusters.
+5. **Current dataset (479) is sufficient** -- models have captured 94-98.5% of their potential; the bottleneck is feature expressiveness, not data quantity.
+6. **Error scales with cluster size** -- reliable for 2-10 trees (MAE ~0.6-1.6), less so for 20+.
