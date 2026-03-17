@@ -422,9 +422,66 @@ Best models: Old CatBoost tuned (5feat, MAE=0.81, R2=0.594) and New CatBoost (20
 - **Data collection**: Prioritize collecting more samples of large clusters (15+ trees) to improve tail performance.
 - **Integration**: The model can serve as a fast screening tool, reducing the need for manual counting or complex machine vision approaches.
 
+## Computational Cost Comparison
+
+Training time benchmarks were measured on the same machine (GPU-accelerated CatBoost/XGBoost) to compare the old 5-feature pipeline against the full new 20-feature pipeline.
+
+### Feature Extraction Time (479 polygons)
+
+| Feature Set | Time | Ratio |
+|-------------|------|-------|
+| 5 features (old) | 38 ms | 1x |
+| 20 features (new) | 245 ms | 6.4x |
+
+Feature extraction is negligible in both cases -- under 250ms for the entire dataset.
+
+### Single Model Fit (one train call, averaged over 5 runs)
+
+| Model | Time (ms) | MAE |
+|-------|-----------|-----|
+| **Ridge (20feat)** | **1** | **1.52** |
+| **Ridge (5feat)** | **294** | **1.49** |
+| RandomForest (20feat) | 282 | 1.54 |
+| XGBoost (20feat) | 472 | 1.64 |
+| CatBoost tuned (5feat) | 986 | 1.59 |
+| CatBoost RMSE (20feat) | 989 | 1.64 |
+| CatBoost Poisson (20feat) | 1,448 | 1.93 |
+| CatBoost old config (5feat) | 9,009 | 1.50 |
+
+Ridge is 3 orders of magnitude faster than CatBoost while delivering equal or better accuracy. The old CatBoost config with early stopping (`od_type="IncToDec"`) is particularly slow (9s per fit) due to its overshoot detection loop.
+
+### Full GridSearchCV (hyperparameter tuning with 5-fold CV)
+
+| Model | Total Time | # Fits | Per Fit |
+|-------|-----------|--------|---------|
+| Ridge GridCV (5feat) | 6.5s | 25 | 261 ms |
+| Ridge GridCV (20feat) | 6.4s | 20 | 322 ms |
+| RandomForest GridCV (20feat) | 6.0s | 45 | 134 ms |
+| XGBoost GridCV (20feat) | 72s | 135 | 534 ms |
+| CatBoost RMSE GridCV (20feat) | 308s (~5 min) | 135 | 2,284 ms |
+| CatBoost GridCV (5feat) | 612s (~10 min) | 180 | 3,400 ms |
+| CatBoost Poisson GridCV (20feat) | 684s (~11 min) | 135 | 5,064 ms |
+
+### Total Pipeline Time
+
+| Pipeline | Feature Extraction | Model Tuning | Total |
+|----------|-------------------|--------------|-------|
+| **Old pipeline** (5feat + CatBoost GridCV) | 0.04s | 612s | **~612s (~10 min)** |
+| **New pipeline** (20feat + all 5 model GridCVs) | 0.25s | 1,076s | **~1,076s (~18 min)** |
+| **Recommended** (5feat + Ridge GridCV) | 0.04s | 6.5s | **~7s** |
+
+### Key Takeaways
+
+1. **Ridge is essentially free** -- under 7 seconds for full grid search with either feature set, while delivering the best or near-best accuracy.
+2. **CatBoost is the computational bottleneck**, consuming 10+ minutes per grid search. The old model's default config with early stopping is especially expensive (9s per single fit, 10 min for full grid search).
+3. **Feature extraction cost is negligible** -- even 20 features takes only 245ms for 479 polygons; this scales linearly and would take ~5s for 10,000 polygons.
+4. **The recommended deployment pipeline (Ridge + 5 features) is ~90x faster** than the old CatBoost pipeline, with equivalent accuracy.
+5. **Number of features has minimal impact on training time** -- the difference between 5 and 20 features is negligible compared to model algorithm choice. Ridge with 20 features (6.4s) is 96x faster than CatBoost with 5 features (612s).
+
 ## Diagnostic Plots
 
-All plots saved to `plots/` directory:
+### New Model (20 features) -- `plots/`
+
 1. `01_target_distribution.png` -- Target variable histogram
 2. `02_correlation_heatmap.png` -- Full feature correlation matrix
 3. `03_feature_target_scatter.png` -- Top features vs trunk count
@@ -433,3 +490,18 @@ All plots saved to `plots/` directory:
 6. `06_error_by_range.png` -- Error breakdown by trunk count range
 7. `07_feature_importance.png` -- Feature importance bar chart
 8. `08_learning_curve.png` -- Training vs validation performance by dataset size
+9. `10_dataset_size_analysis.png` -- Learning curve extrapolation
+
+### Old Model (5 features) -- `plots_old_model/`
+
+1. `01_mrr_axis_bug.png` -- Old vs correct MRR axis computation
+2. `02_feature_correlation.png` -- 5-feature correlation heatmap
+3. `03_feature_target_scatter.png` -- Each feature vs trunk count with Spearman rho
+4. `04_predicted_vs_actual_full.png` -- Predicted vs actual, all 3 models (full range)
+5. `05_residual_analysis_full.png` -- Residuals, distribution, error vs actual
+6. `06_error_by_range_full.png` -- Error boxplot by trunk count bins
+7. `07_feature_importance_full.png` -- CatBoost old config vs tuned importance
+8. `08_predicted_vs_actual_le8.png` -- Predicted vs actual, all 3 models (<=8)
+9. `09_residual_analysis_le8.png` -- Residuals and error by sub-range (<=8)
+10. `10_feature_importance_shift.png` -- Importance shift: full range vs <=8
+11. `11_model_comparison.png` -- Side-by-side MAE/R2/Within+/-2 bar charts
