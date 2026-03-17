@@ -79,7 +79,8 @@ The full workflow is available as interactive notebooks:
 02_model_training.ipynb       # Notebook: model training and evaluation
 03_predict_new_data.ipynb     # Notebook: predict on new data
 04_old_model_evaluation.ipynb # Notebook: old model evaluation
-train_evaluate_model.py       # Standalone pipeline script
+train_evaluate_model.py       # Standalone pipeline script (20-feature model)
+plot_old_model.py             # Old model evaluation + plot generation
 feature_utils.py              # Morphological feature extraction module
 eval_old_model.py             # Old model evaluation script
 dataset_size_analysis.py      # Learning curve extrapolation analysis
@@ -87,7 +88,8 @@ train_set_validated.shp       # Training dataset (+ .dbf, .shx, .prj, .cpg)
 results.MD                    # Detailed results analysis
 evaluation_report.txt         # Model comparison metrics
 model_features.json           # Feature list and model config
-plots/                        # Diagnostic visualizations
+plots/                        # Diagnostic plots (20-feature model)
+plots_old_model/              # Diagnostic plots (old 5-feature model)
 old_model/                    # Previous CatBoost-based implementation
 ```
 

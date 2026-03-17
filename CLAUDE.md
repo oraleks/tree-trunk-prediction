@@ -4,23 +4,23 @@
 
 Crown delineation from orthophotos struggles with overlapping canopies. The hypothesis is that morphological properties of merged crown elevation polygons (area, elongation, complexity, etc.) correlate with the number of tree trunks beneath them. We have 479 manually-validated polygons (`train_set_validated.shp`) with trunk counts (range 2-44, median 5). The existing code in `old_model/` uses CatBoost but has no proper evaluation -- it trains on all labeled data and predicts unlabeled polygons. We need a rigorous assessment of whether this approach works.
 
-**Installed packages**: geopandas, shapely, scikit-learn, xgboost, matplotlib, shap, numpy, pandas, joblib.
-**Missing**: catboost (will install), seaborn (will install).
+**Installed packages**: geopandas, shapely, scikit-learn, xgboost, catboost, matplotlib, seaborn, shap, numpy, pandas, joblib.
 
-## Files to Create
+## Files
 
 | File | Purpose |
 |------|---------|
-| `feature_utils.py` | Reusable feature extraction from polygon geometries |
+| `feature_utils.py` | Reusable 20-feature extraction from polygon geometries |
 | `train_evaluate_model.py` | Main pipeline: load data, engineer features, train/evaluate models, produce plots |
+| `eval_old_model.py` | Old model (5-feature) evaluation script |
+| `plot_old_model.py` | Old model evaluation with diagnostic plots → `plots_old_model/` |
+| `dataset_size_analysis.py` | Learning curve extrapolation and dataset size analysis |
+| `01_feature_extraction.ipynb` | Notebook: feature extraction (5 and 20 features) + EDA |
+| `02_model_training.ipynb` | Notebook: model training, CV, evaluation, save models |
+| `03_predict_new_data.ipynb` | Notebook: apply trained model to new shapefile |
+| `04_old_model_evaluation.ipynb` | Notebook: old 5-feature model training and evaluation |
 
-## Step 1 -- Install Missing Packages
-
-```bash
-pip install catboost seaborn
-```
-
-## Step 2 -- Feature Engineering (`feature_utils.py`)
+## Step 1 -- Feature Engineering (`feature_utils.py`)
 
 Create `extract_features(gdf) -> pd.DataFrame` that computes ~20 morphological features:
 
@@ -103,9 +103,18 @@ Print a synthesis:
 
 - Best model to `best_model.joblib`
 - Feature list to `model_features.json`
-- All plots to `plots/` directory AND displayed interactively (matplotlib windows)
+- New model plots to `plots/` directory
+- Old model plots to `plots_old_model/` directory
 - Summary report to `evaluation_report.txt`
 - Use GPU acceleration for CatBoost/XGBoost (`task_type="GPU"` / `device="cuda"`)
+
+## Step 11 -- Old Model Evaluation (`plot_old_model.py`, `04_old_model_evaluation.ipynb`)
+
+Evaluate the original 5-feature CatBoost model from `old_model/app.py` using the same rigorous methodology:
+- Replicate exact old feature computation (including buggy MRR axis-aligned bbox)
+- Train CatBoost (old config), CatBoost (tuned), Ridge on full range and <=8 subset
+- Generate 11 diagnostic plots in `plots_old_model/`
+- Compare feature importance shift between full range and <=8 subset
 
 ## Verification
 
