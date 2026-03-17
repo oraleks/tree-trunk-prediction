@@ -321,6 +321,66 @@ As with the 20-feature model, compactness overtakes perimeter as the dominant fe
 
 6. **For deployment, the 5-feature model is preferable** -- it is simpler, faster, requires no additional geometric computations beyond what GIS software provides natively (area, perimeter), and performs equivalently to the 20-feature version.
 
+## Dataset Size Analysis: Can More Data Improve Accuracy?
+
+To estimate whether expanding the training set would meaningfully improve predictions, learning curves were generated with 15 progressively larger training subsets (10%-100%) and extrapolated using an inverse-square-root model: `MAE = a / sqrt(n) + c`, where `c` represents the asymptotic MAE floor -- the best performance achievable with these features regardless of dataset size.
+
+### Full Range (2-44 trees)
+
+| Model | Current n | Current MAE | Asymptotic Floor | Gap to Floor | At n=1000 | At n=5000 |
+|-------|-----------|-------------|-----------------|--------------|-----------|-----------|
+| Ridge (5feat) | 306 | 1.308 | 1.289 | 1.5% | 1.302 (+0.5%) | 1.295 (+1.1%) |
+| CatBoost (5feat) | 306 | 1.366 | 1.315 | 3.7% | 1.350 (+1.1%) | 1.331 (+2.6%) |
+
+**The full-range model is near its ceiling.** Ridge is only 1.5% above its asymptotic floor -- essentially at the limit of what 5 morphological features can predict. Even multiplying the dataset 16x (to ~5000) would improve MAE by just 1.1%. CatBoost has slightly more room (3.7% gap) but the gains are still marginal: tripling the dataset to ~1000 yields only 1.1% improvement.
+
+### Dedicated <=8 Trees
+
+| Model | Current n | Current MAE | Asymptotic Floor | Gap to Floor | At n=1000 | At n=3000 |
+|-------|-----------|-------------|-----------------|--------------|-----------|-----------|
+| Ridge (5feat) | 243 | 0.852 | 0.820 | 3.8% | 0.833 (+2.3%) | 0.827 (+2.9%) |
+| CatBoost (5feat) | 243 | 0.877 | 0.824 | 6.0% | 0.855 (+2.5%) | 0.842 (+4.0%) |
+
+The <=8 model has slightly more room for improvement than the full-range model. CatBoost in particular has a 6% gap to its floor, and quadrupling to ~1000 samples would yield a 2.5% improvement. However, this translates to an absolute improvement of only ~0.02 trees in MAE -- from 0.877 to 0.855.
+
+### Bootstrap Stability (Ridge, full range)
+
+How much does performance vary across different random train/test splits?
+
+| Training samples | MAE (mean +/- std) | Range |
+|-----------------|---------------------|-------|
+| 114 (30%) | 1.552 +/- 0.089 | 1.417 - 1.833 |
+| 191 (50%) | 1.536 +/- 0.080 | 1.375 - 1.708 |
+| 268 (70%) | 1.527 +/- 0.063 | 1.417 - 1.646 |
+| 344 (90%) | 1.526 +/- 0.056 | 1.406 - 1.677 |
+| 383 (100%) | 1.521 +/- 0.056 | 1.396 - 1.656 |
+
+Prediction stability improves modestly with more data (std drops from 0.089 to 0.056), but the mean MAE plateaus quickly. Even using only 50% of the training data yields MAE within 1% of the full result.
+
+### Diminishing Returns Thresholds
+
+At what dataset size has each model captured most of its learnable signal?
+
+| Model | 90% of potential at | 95% of potential at | Current n |
+|-------|---------------------|---------------------|-----------|
+| Ridge full range | ~10 | ~43 | 306 |
+| CatBoost full range | ~73 | ~295 | 306 |
+| Ridge <=8 | ~24 | ~98 | 243 |
+| CatBoost <=8 | ~142 | ~569 | 243 |
+
+Ridge models converge very quickly (95% of potential with <100 samples), reflecting the simplicity of the linear relationship. CatBoost requires more data to tune its nonlinear splits, but even so, the current dataset of ~300 training samples puts it at or past the 95% threshold.
+
+### Conclusion on Dataset Size
+
+**The current dataset of 479 polygons is essentially sufficient.** The models have captured 94-98.5% of the learnable signal from these 5 morphological features. Expanding the training set would produce marginal improvements:
+
+- **Doubling to ~1000 polygons**: ~1-2.5% MAE improvement (practically negligible)
+- **10x to ~5000 polygons**: ~1-4% MAE improvement (not worth the manual labeling effort)
+
+**The bottleneck is not data quantity but feature expressiveness.** The asymptotic MAE floors (1.29 for full range, 0.82 for <=8) represent the inherent limit of predicting trunk count from polygon shape alone. To meaningfully improve beyond current accuracy, the path forward is not more polygons but **richer features** -- e.g., spectral information from the orthophoto, LiDAR-derived height variance within the polygon, or texture metrics.
+
+The one exception is **rare high-count clusters (15+ trees)**, which are underrepresented in the current dataset (n=56). Targeted collection of these cases could reduce the large errors seen in the 21+ range, though this is a data *distribution* issue rather than a data *quantity* issue.
+
 ## Conclusions
 
 ### Applicability: STRONG
