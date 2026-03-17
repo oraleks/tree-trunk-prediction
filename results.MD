@@ -101,11 +101,70 @@ The model is highly accurate for small clusters (2-6 trees) but degrades signifi
 - Train-validation gap: 0.09 (minimal overfitting)
 - **Performance is still improving** -- collecting more samples would likely improve results further
 
+## Focus Analysis: Polygons with 2-8 Trees
+
+Polygons with up to 8 trees represent 80% of the dataset (381 of 479 polygons) and are the most operationally relevant range for urban tree inventory. This section evaluates model performance specifically for this subset.
+
+### Dataset Composition
+
+| Subset | Count | Percentage | Mean Trunk Count |
+|--------|-------|------------|------------------|
+| 2-8 trees | 381 | 79.5% | 4.27 |
+| 9+ trees | 98 | 20.5% | 14.42 |
+
+### Full-Range Models Evaluated on <=8 Subset
+
+How do models trained on the full 2-44 range perform when evaluated only on the <=8 test polygons?
+
+| Model | MAE | R2 | Within +/-1 | Within +/-2 |
+|-------|-----|----|-------------|-------------|
+| Ridge | 0.90 | 0.495 | 80.5% | 98.7% |
+| CatBoost RMSE | 0.99 | 0.396 | 81.8% | 96.1% |
+| CatBoost Poisson | 0.99 | 0.404 | 79.2% | 94.8% |
+
+### Dedicated <=8 Models (trained and tested only on 2-8 trees)
+
+| Model | MAE | RMSE | R2 | Spearman | Within +/-1 | Within +/-2 |
+|-------|-----|------|----|----------|-------------|-------------|
+| **CatBoost RMSE** | **0.79** | **1.13** | **0.573** | **0.811** | **85.7%** | 94.8% |
+| Ridge | 0.86 | 1.16 | 0.551 | 0.791 | 83.1% | 96.1% |
+| CatBoost Poisson | 0.86 | 1.28 | 0.456 | 0.751 | 84.4% | 92.2% |
+
+**CatBoost RMSE is the best model for the <=8 range** (MAE=0.79, 85.7% within +/-1 tree), overtaking Ridge which wins on the full range. Best hyperparameters: depth=5, iterations=100, learning_rate=0.05.
+
+### Error Breakdown within 2-8 Range (CatBoost RMSE)
+
+| Trunk Count | n (test) | Mean Error |
+|-------------|----------|------------|
+| 2-3 | 33 | 0.48 |
+| 4-5 | 25 | 0.80 |
+| 6-8 | 19 | 1.32 |
+
+### Why R2 Drops but Practical Performance Improves
+
+The R2 drops from 0.731 (full range) to 0.573 (<=8 subset) despite better absolute accuracy. This is not a contradiction -- R2 measures proportion of variance explained. When restricting to 2-8 trees, the target variance shrinks dramatically (std ~1.8 vs ~5.2 for the full range). The model explains less of this narrower variance, even though its absolute errors are much smaller. **For practical purposes, MAE and within-N accuracy are the right metrics here.**
+
+### Feature Importance Shifts for <=8 Models
+
+CatBoost's feature importance reveals a significant shift when focusing on the <=8 range:
+
+| Rank | Full Range (2-44) | <=8 Dedicated Model |
+|------|-------------------|---------------------|
+| 1 | perimeter (22.0) | **compactness (14.2)** |
+| 2 | compactness (19.1) | **convex_hull_deficit (13.0)** |
+| 3 | convex_hull_deficit (16.1) | radius_std (8.6) |
+| 4 | radius_std (10.8) | perimeter (7.9) |
+| 5 | n_vertices (8.2) | mean_radius (7.8) |
+
+**On the full range, perimeter dominates** -- more trees simply means a bigger polygon. But **for 2-8 trees, shape complexity features (compactness, convex hull deficit) surpass pure size**. This makes physical sense: a 2-tree polygon and a 6-tree polygon of similar overall size will differ more in shape irregularity (lobing, concavities, deviation from circular) than in raw perimeter. The model learns to "read" the shape's complexity as a signal for how many crowns are merged together.
+
 ## Conclusions
 
-### Applicability: STRONG (R2 = 0.731)
+### Applicability: STRONG
 
-The morphological approach is **viable** for predicting tree trunk count from crown elevation polygons. Key findings:
+The morphological approach is **viable** for predicting tree trunk count from crown elevation polygons.
+
+### Full Range (2-44 trees): Ridge Regression (R2 = 0.731)
 
 1. **The relationship is predominantly linear** -- Ridge regression outperformed all tree-based ensemble methods (RandomForest, XGBoost, CatBoost). Larger/longer polygons contain more trees in a largely proportional relationship.
 
@@ -117,11 +176,23 @@ The morphological approach is **viable** for predicting tree trunk count from cr
 
 5. **Target transforms (log, sqrt) did not improve results**, suggesting the raw count is already well-suited for regression.
 
+### Operational Range (2-8 trees): CatBoost RMSE (R2 = 0.573, MAE = 0.79)
+
+1. **CatBoost outperforms Ridge** on the <=8 subset, indicating nonlinear shape-trunk relationships that a linear model cannot fully capture at this scale.
+
+2. **Shape complexity matters more than size** for distinguishing small clusters. Compactness and convex hull deficit become the top predictors, replacing perimeter.
+
+3. **Predictions are off by less than 1 tree on average** (MAE = 0.79), with 85.7% of predictions exact or within +/-1 tree.
+
+4. **Sub-tree accuracy for the smallest clusters**: polygons with 2-3 trees have a mean error of only 0.48.
+
 ### Recommendations
 
-- **Operational use**: Deploy with confidence for clusters of 2-10 trees. Flag predictions of 15+ as low-confidence.
+- **For general use (2-44 trees)**: Deploy Ridge regression. Simple, fast, and best overall R2.
+- **For operational use (2-8 trees)**: Deploy CatBoost RMSE for better accuracy on the most common cluster sizes.
+- **Confidence thresholds**: High confidence for 2-5 trees (error <1), moderate for 6-8 (error ~1.3), low confidence for 9+.
 - **Data collection**: Prioritize collecting more samples of large clusters (15+ trees) to improve tail performance.
-- **Feature simplification**: A model using only perimeter + area + major axis would perform nearly as well, simplifying deployment.
+- **Feature simplification**: For the full-range model, perimeter + area + major axis is nearly sufficient. For the <=8 model, retain shape complexity features (compactness, convex hull deficit).
 - **Integration**: The model can serve as a fast screening tool, reducing the need for manual counting or complex machine vision approaches.
 
 ## Diagnostic Plots
