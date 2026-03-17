@@ -231,17 +231,109 @@ CatBoost's feature importance reveals a significant shift when focusing on the <
 
 **On the full range, perimeter dominates** -- more trees simply means a bigger polygon. But **for 2-8 trees, shape complexity features (compactness, convex hull deficit) surpass pure size**. This makes physical sense: a 2-tree polygon and a 6-tree polygon of similar overall size will differ more in shape irregularity (lobing, concavities, deviation from circular) than in raw perimeter. The model learns to "read" the shape's complexity as a signal for how many crowns are merged together.
 
+## Old Model Evaluation (5 Features)
+
+The original model (`old_model/app.py`) uses CatBoost with only 5 features: perimeter, area, compactness, perimeter_to_area, and eccentricity. Eccentricity is derived from the minimum rotated rectangle (MRR) axis lengths, but the old code computes these incorrectly -- it takes the axis-aligned bounding box of the MRR rather than the actual side lengths, which gives wrong values for rotated rectangles. This evaluation replicates the old feature computation exactly to assess performance with those original 5 features and the buggy eccentricity.
+
+The same evaluation methodology is used: 80/20 stratified train/test split (random_state=42), 5-fold cross-validation for hyperparameter tuning.
+
+### Full Range (2-44 trees) -- Old Features
+
+| Model | MAE | RMSE | R2 | Spearman | W+/-1 | W+/-2 |
+|-------|-----|------|----|----------|-------|-------|
+| Old CatBoost (no tuning, 5feat) | 1.50 | 3.29 | 0.709 | 0.862 | 70.8% | 86.5% |
+| Old CatBoost (tuned, 5feat) | 1.49 | 3.19 | 0.728 | 0.860 | 75.0% | 86.5% |
+| Old Ridge (5feat) | 1.52 | 3.14 | **0.736** | 0.865 | 72.9% | 86.5% |
+| *New Ridge (20feat)* | *1.52* | *3.17* | *0.731* | *0.859* | *69.8%* | *88.5%* |
+| *New CatBoost RMSE (20feat)* | *1.64* | *3.46* | *0.680* | *0.847* | *71.9%* | *87.5%* |
+
+The old model's untuned CatBoost configuration uses default parameters with early stopping (`od_type="IncToDec"`, `od_pval=0.001`, `od_wait=100`). The tuned version searches over iterations [100, 300, 500, 1000], depth [3, 5, 7], and learning_rate [0.01, 0.05, 0.1]. Best tuned params: depth=3, iterations=100, learning_rate=0.1.
+
+**Feature importance (CatBoost tuned, full range):**
+
+| Feature | Importance (%) |
+|---------|---------------|
+| perimeter | 52.2 |
+| compactness | 36.1 |
+| area | 7.0 |
+| eccentricity | 2.7 |
+| perimeter_to_area | 1.9 |
+
+Perimeter and compactness together account for 88% of the model's decision-making.
+
+### Full Range on <=8 Subset -- Old Features
+
+Performance of the full-range old models when evaluated only on test polygons with <=8 trees (n=77):
+
+| Model | MAE | R2 | W+/-1 | W+/-2 |
+|-------|-----|----|-------|-------|
+| Old CatBoost (no tuning) | 0.87 | 0.478 | 81.8% | 96.1% |
+| Old CatBoost (tuned) | 0.86 | 0.473 | 83.1% | 94.8% |
+| Old Ridge | 0.91 | 0.508 | 83.1% | 96.1% |
+| *New Ridge (20feat)* | *0.90* | *0.495* | *80.5%* | *98.7%* |
+
+### Dedicated <=8 Models -- Old Features
+
+Models trained and tested exclusively on polygons with 2-8 trees (304 train / 77 test):
+
+| Model | MAE | RMSE | R2 | Spearman | W+/-1 | W+/-2 |
+|-------|-----|------|----|----------|-------|-------|
+| Old CatBoost (no tuning, 5feat) | 0.88 | 1.21 | 0.517 | 0.795 | 79.2% | 96.1% |
+| **Old CatBoost (tuned, 5feat)** | **0.81** | **1.10** | **0.594** | **0.817** | 81.8% | 98.7% |
+| Old Ridge (5feat) | 0.88 | 1.16 | 0.551 | 0.760 | 76.6% | 100% |
+| *New CatBoost RMSE (20feat)* | *0.79* | *1.13* | *0.573* | *0.811* | *85.7%* | *94.8%* |
+| *New Ridge (20feat)* | *0.86* | *1.16* | *0.551* | *0.791* | *83.1%* | *96.1%* |
+
+Best tuned params for old CatBoost on <=8: depth=3, iterations=1000, learning_rate=0.01.
+
+**Feature importance (CatBoost tuned, <=8 dedicated):**
+
+| Feature | Importance (%) |
+|---------|---------------|
+| compactness | 45.8 |
+| perimeter | 31.6 |
+| area | 14.3 |
+| eccentricity | 4.3 |
+| perimeter_to_area | 4.0 |
+
+As with the 20-feature model, compactness overtakes perimeter as the dominant feature when focusing on the <=8 range.
+
+### Error Breakdown within 2-8 Range -- Old Features
+
+| Model | 2-3 trees | 4-5 trees | 6-8 trees |
+|-------|-----------|-----------|-----------|
+| Old CatBoost (no tuning) | 0.58 | 0.96 | 1.32 |
+| Old CatBoost (tuned) | 0.42 | 1.04 | 1.16 |
+| Old Ridge | 0.61 | 0.96 | 1.26 |
+| *New CatBoost (20feat)* | *0.48* | *0.80* | *1.32* |
+
+### Key Findings: Old vs New Model
+
+1. **The 15 additional features provide minimal improvement.** Ridge with 5 old features (R2=0.736) slightly *outperforms* Ridge with 20 new features (R2=0.731) on the full range. The core predictive signal is captured by perimeter, area, and compactness alone.
+
+2. **On the <=8 range, old and new models are nearly equivalent.** Old CatBoost tuned (MAE=0.81, R2=0.594) vs new CatBoost (MAE=0.79, R2=0.573). The old model actually achieves a higher R2, while the new model has a marginally lower MAE.
+
+3. **Hyperparameter tuning matters more than feature count.** The untuned old CatBoost (R2=0.709) improves to 0.728 with tuning -- a larger gain than adding 15 features to the tuned model.
+
+4. **Compactness is the critical feature** that the old model gets right. It accounts for 36-46% of importance and is the only shape-complexity feature in the 5-feature set. The 15 additional features in the new model (convexity, boundary sinuosity, radial stats, etc.) largely duplicate or dilute the signal that compactness already captures.
+
+5. **The buggy eccentricity has minimal impact.** Eccentricity accounts for only 2.7-4.3% of feature importance, so the incorrect MRR axis computation does not meaningfully affect predictions.
+
+6. **For deployment, the 5-feature model is preferable** -- it is simpler, faster, requires no additional geometric computations beyond what GIS software provides natively (area, perimeter), and performs equivalently to the 20-feature version.
+
 ## Conclusions
 
 ### Applicability: STRONG
 
-The morphological approach is **viable** for predicting tree trunk count from crown elevation polygons.
+The morphological approach is **viable** for predicting tree trunk count from crown elevation polygons. Even a simple 5-feature model achieves R2 > 0.7 on the full range and sub-1-tree MAE on the operationally important 2-8 tree range.
 
-### Full Range (2-44 trees): Ridge Regression (R2 = 0.731)
+### Full Range (2-44 trees)
 
-1. **The relationship is predominantly linear** -- Ridge regression outperformed all tree-based ensemble methods (RandomForest, XGBoost, CatBoost). Larger/longer polygons contain more trees in a largely proportional relationship.
+Best models: Ridge (5feat, R2=0.736) and Ridge (20feat, R2=0.731) -- effectively equivalent.
 
-2. **Perimeter is the single most important predictor**, far exceeding all other features. This makes physical sense: merged crowns of multiple trees create elongated, irregular boundaries with greater perimeter relative to simple single-tree crowns.
+1. **The relationship is predominantly linear** -- Ridge regression outperformed all tree-based ensemble methods across both feature sets. Larger/longer polygons contain more trees in a largely proportional relationship.
+
+2. **Perimeter and compactness are the two critical predictors**, together accounting for 88% of CatBoost's feature importance. The remaining features contribute marginally.
 
 3. **The model is most reliable for 2-10 trees** (MAE ~0.6-1.6), which covers the vast majority of urban crown clusters. For very large clusters (20+), predictions are unreliable.
 
@@ -249,23 +341,25 @@ The morphological approach is **viable** for predicting tree trunk count from cr
 
 5. **Target transforms (log, sqrt) did not improve results**, suggesting the raw count is already well-suited for regression.
 
-### Operational Range (2-8 trees): CatBoost RMSE (R2 = 0.573, MAE = 0.79)
+### Operational Range (2-8 trees)
 
-1. **CatBoost outperforms Ridge** on the <=8 subset, indicating nonlinear shape-trunk relationships that a linear model cannot fully capture at this scale.
+Best models: Old CatBoost tuned (5feat, MAE=0.81, R2=0.594) and New CatBoost (20feat, MAE=0.79, R2=0.573) -- effectively equivalent.
 
-2. **Shape complexity matters more than size** for distinguishing small clusters. Compactness and convex hull deficit become the top predictors, replacing perimeter.
+1. **CatBoost outperforms Ridge** on the <=8 subset with both feature sets, indicating nonlinear shape-trunk relationships that a linear model cannot fully capture at this scale.
 
-3. **Predictions are off by less than 1 tree on average** (MAE = 0.79), with 85.7% of predictions exact or within +/-1 tree.
+2. **Compactness becomes the dominant feature** for small clusters (36-46% importance), replacing perimeter. This makes physical sense: polygons covering 2-8 trees of similar overall size differ more in shape irregularity than in raw perimeter.
 
-4. **Sub-tree accuracy for the smallest clusters**: polygons with 2-3 trees have a mean error of only 0.48.
+3. **Predictions are off by less than 1 tree on average** (MAE ~0.8), with ~82-86% of predictions exact or within +/-1 tree.
+
+4. **Sub-tree accuracy for the smallest clusters**: polygons with 2-3 trees have a mean error of only 0.42-0.58.
 
 ### Recommendations
 
+- **Use the 5-feature model.** It matches the 20-feature version in performance while being simpler and faster. The features (perimeter, area, compactness, perimeter_to_area, eccentricity) are straightforward to compute in any GIS environment.
 - **For general use (2-44 trees)**: Deploy Ridge regression. Simple, fast, and best overall R2.
-- **For operational use (2-8 trees)**: Deploy CatBoost RMSE for better accuracy on the most common cluster sizes.
+- **For operational use (2-8 trees)**: Deploy CatBoost RMSE with tuned hyperparameters for better accuracy on the most common cluster sizes.
 - **Confidence thresholds**: High confidence for 2-5 trees (error <1), moderate for 6-8 (error ~1.3), low confidence for 9+.
 - **Data collection**: Prioritize collecting more samples of large clusters (15+ trees) to improve tail performance.
-- **Feature simplification**: For the full-range model, perimeter + area + major axis is nearly sufficient. For the <=8 model, retain shape complexity features (compactness, convex hull deficit).
 - **Integration**: The model can serve as a fast screening tool, reducing the need for manual counting or complex machine vision approaches.
 
 ## Diagnostic Plots
