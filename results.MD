@@ -21,6 +21,79 @@ Evaluate whether morphological properties of overlapping tree crown elevation po
 | **Radial** | mean_radius, radius_std, radius_cv, radius_ratio |
 | **Derived** | equivalent_diameter, convex_hull_deficit, l_ratio |
 
+## Evaluation Methodology
+
+### Data Preparation
+
+1. **Loading**: The shapefile is read with GeoPandas and reprojected to EPSG:2039 (Israel Transverse Mercator, units in meters). Multi-part geometries are exploded into individual polygons. Polygons fully contained within other polygons are removed using a spatial index to avoid double-counting.
+
+2. **Feature extraction**: 20 morphological features are computed from each polygon's geometry (see table above). All features are derived purely from polygon shape -- no spatial location features are used, to avoid data leakage from spatial autocorrelation. A key fix over the old model: minimum rotated rectangle (MRR) axis lengths are computed from actual Euclidean distances between consecutive MRR vertices, rather than the axis-aligned bounding box of the MRR (which gives incorrect values for rotated rectangles).
+
+### Train/Test Split
+
+The 479 polygons are split 80/20 into training (383) and test (96) sets. Because the target is heavily right-skewed (median 5, max 44), a **stratified split** is used: `Point_Coun` is binned into 5 groups (2-3, 4-5, 6-8, 9-15, 16+), and `sklearn.model_selection.train_test_split` samples proportionally from each bin. This ensures the test set contains representative samples across the full count range. A fixed `random_state=42` ensures reproducibility.
+
+The test set is held out throughout the entire model selection process and used only for final evaluation -- it is never seen during training or hyperparameter tuning.
+
+### Cross-Validation and Hyperparameter Tuning
+
+Each model is tuned using **5-fold cross-validation** on the training set only (`sklearn.model_selection.KFold`, `shuffle=True`, `random_state=42`). The training set (383 samples) is split into 5 folds of ~77 samples each. For each hyperparameter combination, the model is trained on 4 folds and evaluated on the held-out fold, repeated 5 times. The combination with the best mean negative MAE across folds is selected.
+
+Hyperparameter tuning is performed via `sklearn.model_selection.GridSearchCV` with the following grids:
+
+| Model | Hyperparameters Searched |
+|-------|-------------------------|
+| Ridge | alpha: [0.1, 1.0, 10.0, 100.0] |
+| RandomForest | n_estimators: [100, 300, 500], max_depth: [3, 5, 7] |
+| XGBoost | n_estimators: [100, 300, 500], max_depth: [3, 5, 7], learning_rate: [0.01, 0.05, 0.1] |
+| CatBoost RMSE | iterations: [100, 300, 500], depth: [3, 5, 7], learning_rate: [0.01, 0.05, 0.1] |
+| CatBoost Poisson | iterations: [100, 300, 500], depth: [3, 5, 7], learning_rate: [0.01, 0.05, 0.1] |
+
+After the best hyperparameters are selected via CV, the model is refit on the entire training set with those parameters (`refit=True` in GridSearchCV).
+
+### Target Transforms
+
+Each model (except CatBoost Poisson, which inherently models log-rate) is tested with three target transforms:
+
+- **raw**: predict `Point_Coun` directly
+- **log1p**: train on `log(1 + Point_Coun)`, inverse-transform predictions with `exp(pred) - 1`
+- **sqrt**: train on `sqrt(Point_Coun)`, inverse-transform with `pred^2`
+
+This yields 13 total configurations (5 models x 3 transforms - 2 Poisson transforms).
+
+### Final Evaluation
+
+Each tuned model predicts on the held-out test set (96 samples). Predictions are rounded to the nearest integer and clipped to a minimum of 1 (trunk count cannot be zero). The following metrics are computed by comparing predictions to actual `Point_Coun` values:
+
+| Metric | Formula | Interpretation |
+|--------|---------|----------------|
+| **MAE** | mean(\|actual - predicted\|) | Average absolute error in tree count |
+| **RMSE** | sqrt(mean((actual - predicted)^2)) | Penalizes large errors more than MAE |
+| **R-squared** | 1 - SS_res / SS_tot | Proportion of variance explained (0-1) |
+| **Spearman rho** | Rank correlation between actual and predicted | Does the model rank polygons correctly? |
+| **Within +/-1** | % of \|actual - predicted\| <= 1 | Practical accuracy: how often is the prediction exact or off by 1 |
+| **Within +/-2** | % of \|actual - predicted\| <= 2 | Practical accuracy with wider tolerance |
+
+### <=8 Subset Evaluation
+
+For the focused 2-8 tree analysis, two approaches were tested:
+
+1. **Full-range model, subset evaluation**: The model trained on all 383 training samples is evaluated only on the test polygons with `Point_Coun <= 8` (77 of 96 test samples). This tests how a general model performs on the operational range.
+
+2. **Dedicated <=8 model**: Only polygons with `Point_Coun <= 8` (381 total) are used. These are split 80/20 (304 train / 77 test) with stratification by bins [2-3, 4-5, 6-8]. Models are tuned and evaluated independently on this subset. This tests whether a specialized model outperforms the general one.
+
+### Feature Importance
+
+Two methods are used:
+
+1. **Model-native importance** (CatBoost/tree models): Built-in feature importance scores based on how frequently and effectively each feature is used in splits.
+
+2. **Permutation importance** (`sklearn.inspection.permutation_importance`): For each feature, its values in the test set are randomly shuffled 20 times, and the increase in MAE is measured. This is model-agnostic and measures each feature's true contribution to test-set performance.
+
+### Learning Curve
+
+`sklearn.model_selection.learning_curve` is used to train the best model on progressively larger subsets of the training data (20%, 30%, ... 100%) and measure 5-fold CV performance at each size. This reveals whether performance is plateauing (more data won't help) or still improving (collect more samples).
+
 ## Model Comparison
 
 13 model configurations were evaluated (5 algorithms x 3 target transforms, minus Poisson with transforms). All used 5-fold cross-validation with hyperparameter grid search. Train/test split: 80/20, stratified by binned trunk count.
