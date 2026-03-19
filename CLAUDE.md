@@ -19,6 +19,8 @@ Crown delineation from orthophotos struggles with overlapping canopies. The hypo
 | `02_model_training.ipynb` | Notebook: model training, CV, evaluation, save models |
 | `03_predict_new_data.ipynb` | Notebook: apply trained model to new shapefile |
 | `04_old_model_evaluation.ipynb` | Notebook: old 5-feature model training and evaluation |
+| `05_generate_tree_points.ipynb` | Notebook: generate estimated tree trunk point locations |
+| `tree_point_generator.py` | Tree point placement module (constrained k-means / CVT approximation) |
 
 ## Step 1 -- Feature Engineering (`feature_utils.py`)
 

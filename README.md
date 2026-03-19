@@ -71,6 +71,7 @@ The full workflow is available as interactive notebooks:
 | [02_model_training.ipynb](02_model_training.ipynb) | Train Ridge/RF/XGBoost/CatBoost, cross-validation, diagnostic plots, save models |
 | [03_predict_new_data.ipynb](03_predict_new_data.ipynb) | Apply trained model to a new unseen shapefile, visualize and save predictions |
 | [04_old_model_evaluation.ipynb](04_old_model_evaluation.ipynb) | Evaluate the original 5-feature CatBoost model with rigorous methodology |
+| [05_generate_tree_points.ipynb](05_generate_tree_points.ipynb) | Generate estimated tree trunk locations within crown polygons |
 
 ## Project Structure
 
@@ -79,9 +80,11 @@ The full workflow is available as interactive notebooks:
 02_model_training.ipynb       # Notebook: model training and evaluation
 03_predict_new_data.ipynb     # Notebook: predict on new data
 04_old_model_evaluation.ipynb # Notebook: old model evaluation
+05_generate_tree_points.ipynb # Notebook: generate tree trunk point locations
 train_evaluate_model.py       # Standalone pipeline script (20-feature model)
 plot_old_model.py             # Old model evaluation + plot generation
 feature_utils.py              # Morphological feature extraction module
+tree_point_generator.py       # Tree point placement using constrained k-means
 eval_old_model.py             # Old model evaluation script
 dataset_size_analysis.py      # Learning curve extrapolation analysis
 train_set_validated.shp       # Training dataset (+ .dbf, .shx, .prj, .cpg)
