@@ -4,7 +4,9 @@
 
 Crown delineation from orthophotos struggles with overlapping canopies. The hypothesis is that morphological properties of merged crown elevation polygons (area, elongation, complexity, etc.) correlate with the number of tree trunks beneath them. We have 479 manually-validated polygons (`train_set_validated.shp`) with trunk counts (range 2-44, median 5). The existing code in `old_model/` uses CatBoost but has no proper evaluation -- it trains on all labeled data and predicts unlabeled polygons. We need a rigorous assessment of whether this approach works.
 
-**Installed packages**: geopandas, shapely, scikit-learn, xgboost, catboost, matplotlib, seaborn, shap, numpy, pandas, joblib.
+**Installed packages**: geopandas, shapely, scikit-learn, xgboost, catboost, matplotlib, seaborn, shap, numpy, pandas, joblib, scipy.
+
+**Notebooks**: All notebooks include a `%pip install` cell at the top for their specific dependencies.
 
 ## Files
 
@@ -21,6 +23,7 @@ Crown delineation from orthophotos struggles with overlapping canopies. The hypo
 | `04_old_model_evaluation.ipynb` | Notebook: old 5-feature model training and evaluation |
 | `05_generate_tree_points.ipynb` | Notebook: generate estimated tree trunk point locations |
 | `tree_point_generator.py` | Tree point placement module (constrained k-means / CVT approximation) |
+| `benchmark_training.py` | Computational cost comparison script |
 
 ## Step 1 -- Feature Engineering (`feature_utils.py`)
 

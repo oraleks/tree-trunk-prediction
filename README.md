@@ -34,8 +34,10 @@ See [results.MD](results.MD) for the full analysis.
 ### Install dependencies
 
 ```bash
-pip install geopandas shapely scikit-learn xgboost catboost matplotlib seaborn shap
+pip install geopandas shapely scikit-learn xgboost catboost matplotlib seaborn shap scipy
 ```
+
+Each notebook also includes a `%pip install` cell at the top for its specific dependencies.
 
 ### Run the training and evaluation pipeline
 
@@ -59,6 +61,16 @@ from feature_utils import extract_features
 
 gdf = gpd.read_file('your_crowns.shp').to_crs(epsg=2039)
 features = extract_features(gdf)
+```
+
+### Generate estimated tree locations
+
+```python
+from tree_point_generator import generate_tree_points_gdf
+
+# gdf must have a column with trunk counts (known or predicted)
+points_gdf = generate_tree_points_gdf(gdf, count_column='Point_Coun')
+points_gdf.to_file('tree_locations.shp')
 ```
 
 ## Jupyter Notebooks
@@ -104,3 +116,4 @@ old_model/                    # Previous CatBoost-based implementation
 4. **CatBoost outperforms Ridge on ≤8 trees** -- nonlinear shape relationships matter more for small clusters.
 5. **Current dataset (479) is sufficient** -- models have captured 94-98.5% of their potential; the bottleneck is feature expressiveness, not data quantity.
 6. **Error scales with cluster size** -- reliable for 2-10 trees (MAE ~0.6-1.6), less so for 20+.
+7. **Tree point generation** -- constrained k-means places estimated trunk locations evenly inside each polygon, producing a point layer for GIS use.
