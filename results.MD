@@ -381,6 +381,79 @@ Ridge models converge very quickly (95% of potential with <100 samples), reflect
 
 The one exception is **rare high-count clusters (15+ trees)**, which are underrepresented in the current dataset (n=56). Targeted collection of these cases could reduce the large errors seen in the 21+ range, though this is a data *distribution* issue rather than a data *quantity* issue.
 
+## CatBoost 3-Feature Model (area, compactness, perimeter)
+
+To test whether the model can be simplified even further, a CatBoost model was trained using only 3 features: area, compactness, and perimeter. These are the three features with the strongest target correlations and the most physical interpretability.
+
+### Feature Overview
+
+| Feature | Spearman rho with target | Description |
+|---------|-------------------------|-------------|
+| perimeter | 0.857 | Polygon boundary length (m) |
+| compactness | -0.835 | Circularity index: 4*pi*area/perimeter^2 |
+| area | 0.730 | Polygon area (m^2) |
+
+Inter-correlations: perimeter-area r=0.938, perimeter-compactness r=-0.699, area-compactness r=-0.516.
+
+### Full Range Results (2-44 trees)
+
+Best hyperparameters: depth=3, iterations=300, learning_rate=0.05.
+
+| Metric | CatBoost 3feat | CatBoost 5feat | Ridge 5feat | Ridge 20feat |
+|--------|---------------|---------------|-------------|-------------|
+| MAE | 1.59 | 1.49 | 1.52 | 1.52 |
+| RMSE | 3.28 | 3.19 | 3.14 | 3.17 |
+| R2 | 0.711 | 0.728 | 0.736 | 0.731 |
+| Spearman | 0.835 | 0.860 | 0.865 | 0.859 |
+| Within +/-1 | 69.8% | 75.0% | 72.9% | 69.8% |
+| Within +/-2 | 83.3% | 86.5% | 86.5% | 88.5% |
+
+Feature importance (CatBoost native): compactness 41.6%, perimeter 37.5%, area 20.9%.
+
+### Error by Trunk Count Range
+
+| Range | n | MAE | Within +/-1 | Within +/-2 |
+|-------|---|-----|-------------|-------------|
+| 2-3 | 33 | 0.55 | 97% | 97% |
+| 4-6 | 34 | 1.21 | 71% | 91% |
+| 7-10 | 15 | 1.67 | 47% | 73% |
+| 11-20 | 11 | 3.36 | 36% | 55% |
+| 21+ | 3 | 10.67 | 0% | 0% |
+
+### Dedicated <=8 Model
+
+Best hyperparameters: depth=3, iterations=100, learning_rate=0.1. Train/test: 304/77.
+
+| Metric | CatBoost 3feat | CatBoost 5feat | CatBoost 20feat |
+|--------|---------------|---------------|----------------|
+| MAE | 0.91 | 0.81 | 0.79 |
+| R2 | 0.534 | 0.594 | 0.573 |
+| Within +/-1 | 80.5% | 81.8% | 85.7% |
+| Within +/-2 | 97.4% | 98.7% | 94.8% |
+
+Feature importance (<=8 dedicated): compactness 48.6%, perimeter 29.4%, area 22.0%.
+
+Error by sub-range: 2-3 trees MAE=0.58 (97% W+/-1), 4-5 trees MAE=1.04 (84%), 6-8 trees MAE=1.32 (47%).
+
+### Model Stability
+
+- **10-fold CV MAE**: 1.409 +/- 0.189 (range: 1.206 - 1.834)
+- **Bootstrap (50 random splits)**: MAE = 1.449 +/- 0.152, R2 = 0.792 +/- 0.061
+
+The bootstrap mean R2 (0.792) is notably higher than the single-split R2 (0.711), indicating the fixed test split may be slightly pessimistic. The model is stable across random splits.
+
+### Key Findings
+
+1. **Dropping from 5 to 3 features costs ~2% R2** on the full range (0.711 vs 0.728) and ~6% on <=8 (0.534 vs 0.594). The penalty is modest but measurable.
+
+2. **The two dropped features (eccentricity and perimeter_to_area) contribute marginally.** In the 5-feature model, they account for only 2.7% and 1.9% of CatBoost importance respectively.
+
+3. **Compactness is the dominant feature** at 42-49% importance, more so than in the 5-feature model (36-46%). With fewer features, compactness absorbs the explanatory power previously shared across more variables.
+
+4. **The 3-feature model is strongest for small clusters**: 2-3 trees achieve 97% within +/-1 accuracy. Performance degrades more steeply for 7+ trees compared to the 5-feature model.
+
+5. **For maximum simplicity with acceptable accuracy**, the 3-feature CatBoost is a viable choice -- only area, perimeter, and compactness are needed (compactness is derived from the other two: `4*pi*area/perimeter^2`). Effectively, only 2 independent measurements are required.
+
 ## Conclusions
 
 ### Applicability: STRONG
@@ -491,6 +564,19 @@ Ridge is 3 orders of magnitude faster than CatBoost while delivering equal or be
 7. `07_feature_importance.png` -- Feature importance bar chart
 8. `08_learning_curve.png` -- Training vs validation performance by dataset size
 9. `10_dataset_size_analysis.png` -- Learning curve extrapolation
+
+### CatBoost 3-Feature Model -- `plots_3feat_catboost/`
+
+1. `01_feature_target_scatter.png` -- Each feature vs trunk count with trend lines
+2. `02_correlation_heatmap.png` -- 3-feature + target correlation matrix
+3. `03_predicted_vs_actual.png` -- Predictions with 1:1 line (full range + <=8 zoom)
+4. `04_residual_analysis.png` -- Residuals, distribution, error growth
+5. `05_error_by_range.png` -- Error boxplots by count range
+6. `06_feature_importance.png` -- Feature importance: full range vs <=8
+7. `07_learning_curve.png` -- Training vs validation MAE by dataset size
+8. `08_bootstrap_stability.png` -- MAE and R2 distributions across 50 random splits
+9. `09_dedicated_le8.png` -- Predicted vs actual and residuals for <=8 model
+10. `10_model_comparison.png` -- Bar chart comparison with previous models
 
 ### Old Model (5 features) -- `plots_old_model/`
 
