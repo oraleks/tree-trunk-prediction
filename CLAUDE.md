@@ -26,6 +26,8 @@ Crown delineation from orthophotos struggles with overlapping canopies. The hypo
 | `benchmark_training.py` | Computational cost comparison script |
 | `eval_3feat_catboost.py` | CatBoost 3-feature (area, compactness, perimeter) evaluation |
 | `batch_extract_features.py` | Batch feature extraction for multiple shapefiles with geometry repair |
+| `batch_predict_trees.py` | Batch tree count prediction (single-tree filter + Ridge) |
+| `batch_generate_points.py` | Batch tree trunk point generation with crown area/diameter |
 
 ## Step 1 -- Feature Engineering (`feature_utils.py`)
 

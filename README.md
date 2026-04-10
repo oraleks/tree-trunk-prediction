@@ -77,7 +77,31 @@ Input naming: `XXX_tree_canopies_YYYY.shp` -> Output: `XXX_tree_canopies_YYYY_pr
 
 Automatically repairs invalid geometries (via `make_valid` + `buffer(0)`), strips Z coordinates, explodes MultiPolygons, removes tiny/contained polygons, then extracts 20 morphological features.
 
-### Generate estimated tree locations
+### Batch prediction pipeline
+
+The full end-to-end pipeline for processing city-wide tree crown data:
+
+```bash
+# Step 1: Extract features and repair geometries
+python batch_extract_features.py path/to/shapefiles/
+# XXX_tree_canopies_YYYY.shp -> XXX_tree_canopies_YYYY_processed.shp
+
+# Step 2: Predict tree count per polygon
+python batch_predict_trees.py path/to/shapefiles/
+# XXX_tree_canopies_YYYY_processed.shp -> XXX_tree_canopies_YYYY_predicted.shp
+
+# Step 3: Generate tree trunk point locations
+python batch_generate_points.py path/to/shapefiles/
+# XXX_tree_canopies_YYYY_predicted.shp -> XXX_tree_trunks_YYYY.shp
+```
+
+Prediction uses a two-step approach:
+1. **Single-tree filter**: polygons with area < 150 m² and compactness > 0.6 are assigned 1 tree
+2. **Ridge regression** (5 features) predicts trunk count for remaining polygons
+
+Each tree point carries `crown_area` (polygon area / N trees) and `crown_diam` (equivalent diameter).
+
+### Generate estimated tree locations (programmatic)
 
 ```python
 from tree_point_generator import generate_tree_points_gdf
@@ -111,6 +135,8 @@ train_evaluate_model.py       # Standalone pipeline script (20-feature model)
 plot_old_model.py             # Old model evaluation + plot generation
 eval_3feat_catboost.py        # CatBoost 3-feature evaluation + report + plots
 batch_extract_features.py     # Batch feature extraction with geometry repair
+batch_predict_trees.py        # Batch tree count prediction (Ridge + single-tree filter)
+batch_generate_points.py      # Batch tree trunk point generation with crown metrics
 feature_utils.py              # Morphological feature extraction module
 tree_point_generator.py       # Tree point placement using constrained k-means
 eval_old_model.py             # Old model evaluation script
