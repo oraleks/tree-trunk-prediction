@@ -63,6 +63,20 @@ gdf = gpd.read_file('your_crowns.shp').to_crs(epsg=2039)
 features = extract_features(gdf)
 ```
 
+### Batch feature extraction for multiple shapefiles
+
+```bash
+# Single file
+python batch_extract_features.py TLV_tree_canopies_2022.shp
+
+# Entire folder
+python batch_extract_features.py path/to/shapefiles/
+```
+
+Input naming: `XXX_tree_canopies_YYYY.shp` -> Output: `XXX_tree_canopies_YYYY_processed.shp`
+
+Automatically repairs invalid geometries (via `make_valid` + `buffer(0)`), strips Z coordinates, explodes MultiPolygons, removes tiny/contained polygons, then extracts 20 morphological features.
+
 ### Generate estimated tree locations
 
 ```python
@@ -95,16 +109,21 @@ The full workflow is available as interactive notebooks:
 05_generate_tree_points.ipynb # Notebook: generate tree trunk point locations
 train_evaluate_model.py       # Standalone pipeline script (20-feature model)
 plot_old_model.py             # Old model evaluation + plot generation
+eval_3feat_catboost.py        # CatBoost 3-feature evaluation + report + plots
+batch_extract_features.py     # Batch feature extraction with geometry repair
 feature_utils.py              # Morphological feature extraction module
 tree_point_generator.py       # Tree point placement using constrained k-means
 eval_old_model.py             # Old model evaluation script
 dataset_size_analysis.py      # Learning curve extrapolation analysis
+benchmark_training.py         # Computational cost comparison
 train_set_validated.shp       # Training dataset (+ .dbf, .shx, .prj, .cpg)
-results.MD                    # Detailed results analysis
+results.MD                    # Detailed results analysis (also results.docx)
 evaluation_report.txt         # Model comparison metrics
+evaluation_report_3feat_catboost.md  # 3-feature CatBoost report (also .docx)
 model_features.json           # Feature list and model config
 plots/                        # Diagnostic plots (20-feature model)
 plots_old_model/              # Diagnostic plots (old 5-feature model)
+plots_3feat_catboost/         # Diagnostic plots (3-feature CatBoost)
 old_model/                    # Previous CatBoost-based implementation
 ```
 

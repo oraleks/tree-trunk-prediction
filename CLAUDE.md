@@ -24,6 +24,8 @@ Crown delineation from orthophotos struggles with overlapping canopies. The hypo
 | `05_generate_tree_points.ipynb` | Notebook: generate estimated tree trunk point locations |
 | `tree_point_generator.py` | Tree point placement module (constrained k-means / CVT approximation) |
 | `benchmark_training.py` | Computational cost comparison script |
+| `eval_3feat_catboost.py` | CatBoost 3-feature (area, compactness, perimeter) evaluation |
+| `batch_extract_features.py` | Batch feature extraction for multiple shapefiles with geometry repair |
 
 ## Step 1 -- Feature Engineering (`feature_utils.py`)
 

@@ -486,13 +486,43 @@ Best models: Old CatBoost tuned (5feat, MAE=0.81, R2=0.594) and New CatBoost (20
 
 4. **Sub-tree accuracy for the smallest clusters**: polygons with 2-3 trees have a mean error of only 0.42-0.58.
 
-### Recommendations
+### Model Selection: Ridge vs CatBoost
+
+The choice between Ridge and CatBoost depends on the target prediction range:
+
+**Full range (2-44 trees): Use Ridge.** Ridge with 5 features (R2=0.736, MAE=1.52) beats or matches all CatBoost variants (best: R2=0.728, MAE=1.49) while training in ~7 seconds vs ~10 minutes. The relationship is predominantly linear at this scale -- CatBoost's nonlinear capacity adds nothing meaningful.
+
+**Operational range (<=8 trees): Use CatBoost with 5 features.** CatBoost 5-feature (MAE=0.81, R2=0.594) meaningfully outperforms Ridge (MAE=0.88, R2=0.551) on this subset. The nonlinear shape-complexity relationships -- especially compactness interactions -- matter for distinguishing small clusters. The 3-feature CatBoost (MAE=0.91, R2=0.534) loses ~10% vs the 5-feature version, making the simplification not worthwhile.
+
+### Ideal Training Set Size for CatBoost
+
+From the dataset size analysis, the current 304 training samples (80% of 381 polygons with <=8 trees) put CatBoost at ~95% of its learnable potential. Extrapolated returns from additional data:
+
+| Training Size | Expected MAE | Improvement over current |
+|--------------|-------------|------------------------|
+| 304 (current) | 0.877 | -- |
+| ~500 | ~0.855 | 2.5% |
+| ~1000 | ~0.842 | 4.0% |
+| ~3000 | ~0.830 | 5.4% |
+
+**~500 labeled polygons in the 2-8 range is a reasonable target.** It captures most of the remaining learnable signal without excessive manual labeling effort. Beyond ~1000, gains become negligible -- the bottleneck shifts from data quantity to feature expressiveness.
+
+For rare high-count clusters (15+ trees), the issue is not overall dataset size but class representation. Targeted collection of 50-100 additional high-count polygons would have a disproportionately large impact on tail performance.
+
+### Recommended Deployment Pipeline
+
+The practical deployment setup combines the strengths of both models:
+
+1. **Train CatBoost 5-feature** (depth=3, iterations=1000, learning_rate=0.01) on all polygons with <=8 trees -- optimized for the common operational range
+2. **Train Ridge 5-feature** (alpha=100) on the full dataset -- handles the general case including large clusters
+3. **At prediction time**: Use the CatBoost model for polygons likely to have <=8 trees (based on area/perimeter thresholds), fall back to Ridge for larger polygons
+4. **Total training time**: ~15 seconds (Ridge grid search + one CatBoost fit with known hyperparameters)
+
+### Additional Recommendations
 
 - **Use the 5-feature model.** It matches the 20-feature version in performance while being simpler and faster. The features (perimeter, area, compactness, perimeter_to_area, eccentricity) are straightforward to compute in any GIS environment.
-- **For general use (2-44 trees)**: Deploy Ridge regression. Simple, fast, and best overall R2.
-- **For operational use (2-8 trees)**: Deploy CatBoost RMSE with tuned hyperparameters for better accuracy on the most common cluster sizes.
 - **Confidence thresholds**: High confidence for 2-5 trees (error <1), moderate for 6-8 (error ~1.3), low confidence for 9+.
-- **Data collection**: Prioritize collecting more samples of large clusters (15+ trees) to improve tail performance.
+- **Data collection**: Prioritize collecting more samples of large clusters (15+ trees) to improve tail performance, and aim for ~500 total labeled polygons in the 2-8 range.
 - **Integration**: The model can serve as a fast screening tool, reducing the need for manual counting or complex machine vision approaches.
 
 ## Computational Cost Comparison
