@@ -82,9 +82,10 @@ def prepare_geodataframe(gdf, target_crs=TARGET_CRS):
     Steps:
     1. Reproject to target CRS (metric units)
     2. Repair all geometries
-    3. Explode MultiPolygons
-    4. Remove non-polygon and empty geometries
-    5. Remove contained (nested) polygons
+    3. Dissolve (union) all polygons into one multipart geometry to merge overlaps
+    4. Explode into individual polygons
+    5. Repair resulting geometries
+    6. Remove non-polygon, empty, and tiny geometries
     """
     n_original = len(gdf)
     print(f"  Original: {n_original} features, CRS={gdf.crs}")
@@ -96,7 +97,7 @@ def prepare_geodataframe(gdf, target_crs=TARGET_CRS):
     else:
         gdf = gdf.to_crs(epsg=target_crs)
 
-    # Repair geometries
+    # Repair geometries before dissolve
     n_invalid = (~gdf.geometry.is_valid).sum()
     gdf['geometry'] = gdf.geometry.apply(repair_geometry)
     n_after_repair = gdf.geometry.notna().sum()
@@ -106,14 +107,43 @@ def prepare_geodataframe(gdf, target_crs=TARGET_CRS):
     # Drop rows with None geometry
     gdf = gdf[gdf.geometry.notna()].copy()
 
-    # Explode MultiPolygons
-    n_before_explode = len(gdf)
-    gdf = gdf.explode(index_parts=False).reset_index(drop=True)
-    if len(gdf) > n_before_explode:
-        print(f"  Exploded MultiPolygons: {n_before_explode} -> {len(gdf)}")
+    # Dissolve: union all polygons to merge overlapping canopies
+    n_polys = len(gdf)
+    print(f"  Dissolving {n_polys} polygons (merging overlaps)...")
+    from shapely.ops import unary_union
+    import gc
 
-    # Keep only Polygons
+    # Chunked dissolve for large datasets to avoid memory spikes
+    CHUNK_SIZE = 50000
+    if n_polys > CHUNK_SIZE:
+        geoms = list(gdf.geometry.values)
+        # Dissolve in chunks, then merge chunks
+        chunks = []
+        for i in range(0, n_polys, CHUNK_SIZE):
+            chunk = unary_union(geoms[i:i + CHUNK_SIZE])
+            chunks.append(chunk)
+            print(f"    Chunk {i//CHUNK_SIZE + 1}/{(n_polys-1)//CHUNK_SIZE + 1} dissolved")
+        merged = unary_union(chunks)
+        del geoms, chunks
+        gc.collect()
+    else:
+        merged = unary_union(gdf.geometry.values)
+    # Repair the merged geometry
+    if not merged.is_valid:
+        merged = make_valid(merged)
+    if merged.is_empty:
+        print(f"  WARNING: Dissolve produced empty geometry")
+        return gpd.GeoDataFrame(columns=['geometry'], crs=gdf.crs)
+
+    # Explode back to individual polygons
+    gdf = gpd.GeoDataFrame(geometry=[merged], crs=gdf.crs)
+    gdf = gdf.explode(index_parts=False).reset_index(drop=True)
+    print(f"  After dissolve + explode: {len(gdf)} polygons")
+
+    # Keep only Polygons and repair
     gdf = gdf[gdf.geometry.type == 'Polygon'].copy()
+    gdf['geometry'] = gdf.geometry.apply(repair_geometry)
+    gdf = gdf[gdf.geometry.notna()].copy()
 
     # Remove very small polygons (likely artifacts)
     min_area = 1.0  # 1 m^2
@@ -121,22 +151,6 @@ def prepare_geodataframe(gdf, target_crs=TARGET_CRS):
     if n_tiny > 0:
         gdf = gdf[gdf.geometry.area >= min_area].copy()
         print(f"  Removed {n_tiny} tiny polygons (< {min_area} m^2)")
-
-    # Remove contained polygons
-    gdf = gdf.reset_index(drop=True)
-    sindex = gdf.sindex
-    to_drop = set()
-    for idx, row in gdf.iterrows():
-        if idx in to_drop:
-            continue
-        candidates = list(sindex.query(row.geometry, predicate='contains'))
-        for c in candidates:
-            if c != idx and c not in to_drop:
-                if row.geometry.contains(gdf.iloc[c].geometry):
-                    to_drop.add(c)
-    if to_drop:
-        gdf = gdf.drop(index=list(to_drop)).reset_index(drop=True)
-        print(f"  Removed {len(to_drop)} contained polygons")
 
     print(f"  Final: {len(gdf)} polygons")
     return gdf
