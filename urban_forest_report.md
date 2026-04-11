@@ -60,7 +60,7 @@ The national distribution is right-skewed, with most trees in the 4-8m crown dia
 | 1 | HAI | Haifa | 6.9 | 6.9 | 4.2 | 237,438 |
 | 2 | HDS | Hod HaSharon | 6.6 | 6.7 | 2.6 | 44,197 |
 | 3 | RMG | Ramat Gan | 6.6 | 6.7 | 3.5 | 133,621 |
-| 4 | PHK | Petah Tikva | 6.6 | 6.8 | 3.0 | 44,381 |
+| 4 | PHK | Pardes Hanna-Karkur | 6.6 | 6.8 | 3.0 | 44,381 |
 | 5 | TLV | Tel Aviv | 6.6 | 6.6 | 4.0 | 212,127 |
 | 6 | KFS | Kfar Saba | 6.5 | 6.3 | 3.4 | 54,672 |
 | 7 | HRZ | Herzliya | 6.5 | 6.4 | 3.3 | 74,202 |
@@ -115,7 +115,7 @@ The national distribution is right-skewed, with most trees in the 4-8m crown dia
 | 6 | KFS | Kfar Saba | 0.706 | 6.5 m | 7.9% | 54,672 |
 | 7 | GTM | Givatayim | 0.703 | 6.5 m | 10.0% | 25,886 |
 | 7 | PTV | Petah Tikva | 0.703 | 6.5 m | 8.7% | 65,850 |
-| 9 | PHK | Petah Tikva | 0.667 | 6.6 m | 7.5% | 44,381 |
+| 9 | PHK | Pardes Hanna-Karkur | 0.667 | 6.6 m | 7.5% | 44,381 |
 | 10 | NTN | Netanya | 0.656 | 6.2 m | 8.0% | 74,475 |
 | 11 | KAT | Kfar Saba | 0.638 | 6.3 m | 7.8% | 55,064 |
 | 12 | NHR | Nahariya | 0.588 | 6.3 m | 8.8% | 22,227 |
@@ -251,7 +251,7 @@ No cities have 99th percentile > 25m.
 | KFS | Kfar Saba | 54,672 | 27,931 | 6.5 | 6.3 | 2.7 | 4.6 | 8.0 | 7.9 | 20.3 | 0.43 | 40 | 0.706 |
 | GTM | Givatayim | 25,886 | 13,323 | 6.5 | 6.5 | 2.8 | 4.7 | 8.3 | 10.0 | 19.0 | 0.43 | 40 | 0.703 |
 | PTV | Petah Tikva | 65,850 | 34,677 | 6.5 | 6.7 | 2.3 | 5.0 | 8.2 | 8.7 | 12.9 | 0.35 | 40 | 0.703 |
-| PHK | Petah Tikva | 44,381 | 20,858 | 6.6 | 6.8 | 2.4 | 5.2 | 8.2 | 7.5 | 11.2 | 0.36 | 34 | 0.667 |
+| PHK | Pardes Hanna-Karkur | 44,381 | 20,858 | 6.6 | 6.8 | 2.4 | 5.2 | 8.2 | 7.5 | 11.2 | 0.36 | 34 | 0.667 |
 | NTN | Netanya | 74,475 | 41,133 | 6.2 | 6.5 | 2.4 | 4.8 | 7.8 | 8.0 | 15.2 | 0.37 | 43 | 0.656 |
 | KAT | Kfar Saba | 55,064 | 30,524 | 6.3 | 6.4 | 2.6 | 4.6 | 7.9 | 7.8 | 18.2 | 0.41 | 44 | 0.638 |
 | NHR | Nahariya | 22,227 | 11,723 | 6.3 | 6.5 | 2.4 | 4.7 | 7.9 | 8.8 | 15.3 | 0.37 | 41 | 0.588 |

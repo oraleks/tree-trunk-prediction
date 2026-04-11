@@ -62,7 +62,7 @@ CITY_NAMES = {
     'KAT': 'Kfar Saba', 'KFS': 'Kfar Saba', 'KGT': 'Kiryat Gat',
     'LOD': 'Lod', 'MDN': 'Modiin', 'NHR': 'Nahariya',
     'NSZ': 'Ness Ziona', 'NTN': 'Netanya', 'NTV': 'Netivot',
-    'NZR': 'Nazareth', 'PHK': 'Petah Tikva', 'PTV': 'Petah Tikva',
+    'NZR': 'Nazareth', 'PHK': 'Pardes Hanna-Karkur', 'PTV': 'Petah Tikva',
     'RAN': 'Raanana', 'RHT': 'Rahat', 'RHV': 'Rehovot',
     'RLZ': 'Rishon LeZion', 'RMG': 'Ramat Gan', 'RML': 'Ramla',
     'RSN': 'Rosh HaAyin', 'SDR': 'Sderot', 'TLV': 'Tel Aviv',
