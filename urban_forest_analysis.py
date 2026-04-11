@@ -243,7 +243,7 @@ def compute_all_cities(data_dir):
 # Phase 2: Plotting
 # =====================================================================
 
-def plot_01_national_histogram(national_stats, out_dir):
+def plot_01_national_histogram(national_stats, out_dir, label=""):
     """National crown diameter distribution."""
     fig, ax1 = plt.subplots(figsize=(12, 6))
 
@@ -259,8 +259,9 @@ def plot_01_national_histogram(national_stats, out_dir):
                    alpha=0.7, color='forestgreen', align='center')
     ax1.set_xlabel('Crown Diameter (m)', fontsize=13)
     ax1.set_ylabel('Density', fontsize=13)
-    ax1.set_title(f'National Tree Crown Diameter Distribution\n'
-                  f'{national_stats["total_trees"]:,} trees across {national_stats["n_cities"]} cities',
+    tree_label = "Street Tree" if label else "Tree"
+    ax1.set_title(f'{label}National {tree_label} Crown Diameter Distribution\n'
+                  f'{national_stats["total_trees"]:,} {tree_label.lower()}s across {national_stats["n_cities"]} cities',
                   fontsize=14)
 
     # Mean and median lines
@@ -288,7 +289,7 @@ def plot_01_national_histogram(national_stats, out_dir):
     save_plot(fig, '01_national_crown_diameter_hist.png')
 
 
-def plot_02_city_grid(df, national_stats, hist_array, out_dir):
+def plot_02_city_grid(df, national_stats, hist_array, out_dir, label=""):
     """Small multiples: crown diameter distribution per city."""
     sorted_idx = df['diam_median'].argsort().values
     n_cities = len(df)
@@ -328,13 +329,13 @@ def plot_02_city_grid(df, national_stats, hist_array, out_dir):
     for i in range(n_cities, len(axes)):
         axes[i].set_visible(False)
 
-    fig.suptitle('Crown Diameter Distribution by City (sorted by median, national overlay in black)',
+    fig.suptitle(f'{label}Crown Diameter Distribution by City (sorted by median, national overlay in black)',
                  fontsize=14, y=1.01)
     fig.tight_layout()
     save_plot(fig, '02_city_distributions_grid.png')
 
 
-def plot_03_city_boxplots(df, national_stats, out_dir):
+def plot_03_city_boxplots(df, national_stats, out_dir, label=""):
     """Box plots from stored quantiles."""
     fig, ax = plt.subplots(figsize=(14, 10))
 
@@ -360,14 +361,14 @@ def plot_03_city_boxplots(df, national_stats, out_dir):
     ax.axvline(national_stats['national_median'], color='blue', linestyle='--', linewidth=2,
                label=f'National median = {national_stats["national_median"]:.1f} m')
     ax.set_xlabel('Crown Diameter (m)', fontsize=13)
-    ax.set_title('Crown Diameter Distribution by City\n(box=IQR, whiskers=10th-90th percentile)', fontsize=14)
+    ax.set_title(f'{label}Crown Diameter Distribution by City\n(box=IQR, whiskers=10th-90th percentile)', fontsize=14)
     ax.legend(fontsize=11)
     ax.set_xlim(0, 22)
     fig.tight_layout()
     save_plot(fig, '03_city_boxplots.png')
 
 
-def plot_04_ranking_median(df, national_stats, out_dir):
+def plot_04_ranking_median(df, national_stats, out_dir, label=""):
     """City ranking by median crown diameter."""
     fig, ax = plt.subplots(figsize=(12, 10))
 
@@ -391,7 +392,7 @@ def plot_04_ranking_median(df, national_stats, out_dir):
     ax.axvline(nat_med, color='blue', linestyle='--', linewidth=2,
                label=f'National median = {nat_med:.1f} m')
     ax.set_xlabel('Median Crown Diameter (m)', fontsize=13)
-    ax.set_title('City Ranking by Median Crown Diameter\n(green=above, gold=near, coral=below national median)',
+    ax.set_title(f'{label}City Ranking by Median Crown Diameter\n(green=above, gold=near, coral=below national median)',
                  fontsize=13)
     ax.legend(fontsize=11)
 
@@ -404,7 +405,7 @@ def plot_04_ranking_median(df, national_stats, out_dir):
     save_plot(fig, '04_city_ranking_median_diam.png')
 
 
-def plot_05_ranking_large_trees(df, out_dir):
+def plot_05_ranking_large_trees(df, out_dir, label=""):
     """City ranking by large tree fraction (>= 10m)."""
     fig, ax = plt.subplots(figsize=(12, 10))
 
@@ -423,7 +424,7 @@ def plot_05_ranking_large_trees(df, out_dir):
     ax.axvline(nat_avg, color='blue', linestyle='--', linewidth=2,
                label=f'National average = {nat_avg:.1f}%')
     ax.set_xlabel('Trees with Crown Diameter >= 10m (%)', fontsize=13)
-    ax.set_title('City Ranking by Large Tree Fraction\n(mature urban forest indicator)', fontsize=13)
+    ax.set_title(f'{label}City Ranking by Large Tree Fraction\n(mature urban forest indicator)', fontsize=13)
     ax.legend(fontsize=11)
 
     for i, (_, row) in enumerate(sorted_df.iterrows()):
@@ -434,7 +435,7 @@ def plot_05_ranking_large_trees(df, out_dir):
     save_plot(fig, '05_city_ranking_large_trees.png')
 
 
-def plot_06_size_classes_stacked(df, out_dir):
+def plot_06_size_classes_stacked(df, out_dir, label=""):
     """Stacked bar chart of crown size classes per city."""
     fig, ax = plt.subplots(figsize=(14, 10))
 
@@ -456,14 +457,14 @@ def plot_06_size_classes_stacked(df, out_dir):
     ax.set_yticks(range(len(df_sorted)))
     ax.set_yticklabels([f"{r['city']}" for _, r in df_sorted.iterrows()], fontsize=9)
     ax.set_xlabel('Percentage of Trees (%)', fontsize=13)
-    ax.set_title('Crown Diameter Size Class Distribution by City', fontsize=14)
+    ax.set_title(f'{label}Crown Diameter Size Class Distribution by City', fontsize=14)
     ax.legend(title='Crown Diameter', bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=10)
     ax.set_xlim(0, 100)
     fig.tight_layout()
     save_plot(fig, '06_crown_size_classes_stacked.png')
 
 
-def plot_07_count_vs_quality(df, out_dir):
+def plot_07_count_vs_quality(df, out_dir, label=""):
     """Scatter: tree count vs median crown diameter."""
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -481,7 +482,8 @@ def plot_07_count_vs_quality(df, out_dir):
     ax.set_xscale('log')
     ax.set_xlabel('Total Tree Count (log scale)', fontsize=13)
     ax.set_ylabel('Median Crown Diameter (m)', fontsize=13)
-    ax.set_title('Tree Count vs. Crown Quality\n(point size = large tree %, color = quality score)',
+    tree_label = "Street Tree" if label else "Tree"
+    ax.set_title(f'{label}{tree_label} Count vs. Crown Quality\n(point size = large tree %, color = quality score)',
                  fontsize=13)
     ax.grid(True, alpha=0.3)
 
@@ -494,7 +496,7 @@ def plot_07_count_vs_quality(df, out_dir):
     save_plot(fig, '07_tree_count_vs_quality.png')
 
 
-def plot_08_quality_heatmap(df, out_dir):
+def plot_08_quality_heatmap(df, out_dir, label=""):
     """Multi-metric quality heatmap."""
     fig, ax = plt.subplots(figsize=(12, 12))
 
@@ -523,13 +525,14 @@ def plot_08_quality_heatmap(df, out_dir):
         ax.text(len(metrics) + 0.3, i + 0.5, f"{row['quality_score']:.2f}",
                 va='center', fontsize=8)
 
-    ax.set_title('Urban Forest Quality: Multi-Metric Comparison\n(sorted by composite quality score)',
+    quality_label = "Street Tree" if label else "Urban Forest"
+    ax.set_title(f'{quality_label} Quality: Multi-Metric Comparison\n(sorted by composite quality score)',
                  fontsize=14, pad=20)
     fig.tight_layout()
     save_plot(fig, '08_quality_index_heatmap.png')
 
 
-def plot_09_cdf_comparison(df, national_stats, hist_array, out_dir):
+def plot_09_cdf_comparison(df, national_stats, hist_array, out_dir, label=""):
     """CDF comparison: top 5, bottom 5, national."""
     fig, ax = plt.subplots(figsize=(10, 7))
 
@@ -562,7 +565,7 @@ def plot_09_cdf_comparison(df, national_stats, hist_array, out_dir):
 
     ax.set_xlabel('Crown Diameter (m)', fontsize=13)
     ax.set_ylabel('Cumulative Percentage (%)', fontsize=13)
-    ax.set_title('Crown Diameter CDF: Top 5 vs Bottom 5 Cities\n(green = top, coral = bottom, black = national)',
+    ax.set_title(f'{label}Crown Diameter CDF: Top 5 vs Bottom 5 Cities\n(green = top, coral = bottom, black = national)',
                  fontsize=13)
     ax.legend(fontsize=9, loc='lower right')
     ax.grid(True, alpha=0.3)
@@ -572,7 +575,7 @@ def plot_09_cdf_comparison(df, national_stats, hist_array, out_dir):
     save_plot(fig, '09_national_vs_city_cdf.png')
 
 
-def plot_10_single_vs_all(df, out_dir):
+def plot_10_single_vs_all(df, out_dir, label=""):
     """Scatter: single-tree median vs all-trees median."""
     fig, ax = plt.subplots(figsize=(8, 8))
 
@@ -592,7 +595,7 @@ def plot_10_single_vs_all(df, out_dir):
 
     ax.set_xlabel('Median Crown Diameter — All Trees (m)', fontsize=12)
     ax.set_ylabel('Median Crown Diameter — Single-Tree Polygons Only (m)', fontsize=12)
-    ax.set_title('Single-Tree vs All-Trees Crown Diameter\n(above line = multi-tree polygons inflate estimates)',
+    ax.set_title(f'{label}Single-Tree vs All-Trees Crown Diameter\n(above line = multi-tree polygons inflate estimates)',
                  fontsize=12)
     ax.legend(fontsize=11)
     ax.set_aspect('equal')

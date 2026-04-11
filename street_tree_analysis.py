@@ -346,18 +346,19 @@ def main():
     print(f"National mean crown diameter: {national_stats['national_mean']:.1f} m")
     print(f"National median crown diameter: {national_stats['national_median']:.1f} m")
 
-    # Phase 2: Generate standard plots
+    # Phase 2: Generate standard plots (with "Street Trees: " label)
     print("\nPhase 2: Generating plots...")
-    plot_01_national_histogram(national_stats, PLOT_DIR)
-    plot_02_city_grid(df, national_stats, hist_array, PLOT_DIR)
-    plot_03_city_boxplots(df, national_stats, PLOT_DIR)
-    plot_04_ranking_median(df, national_stats, PLOT_DIR)
-    plot_05_ranking_large_trees(df, PLOT_DIR)
-    plot_06_size_classes_stacked(df, PLOT_DIR)
-    plot_07_count_vs_quality(df, PLOT_DIR)
-    plot_08_quality_heatmap(df, PLOT_DIR)
-    plot_09_cdf_comparison(df, national_stats, hist_array, PLOT_DIR)
-    plot_10_single_vs_all(df, PLOT_DIR)
+    LBL = "Street Trees: "
+    plot_01_national_histogram(national_stats, PLOT_DIR, label=LBL)
+    plot_02_city_grid(df, national_stats, hist_array, PLOT_DIR, label=LBL)
+    plot_03_city_boxplots(df, national_stats, PLOT_DIR, label=LBL)
+    plot_04_ranking_median(df, national_stats, PLOT_DIR, label=LBL)
+    plot_05_ranking_large_trees(df, PLOT_DIR, label=LBL)
+    plot_06_size_classes_stacked(df, PLOT_DIR, label=LBL)
+    plot_07_count_vs_quality(df, PLOT_DIR, label=LBL)
+    plot_08_quality_heatmap(df, PLOT_DIR, label=LBL)
+    plot_09_cdf_comparison(df, national_stats, hist_array, PLOT_DIR, label=LBL)
+    plot_10_single_vs_all(df, PLOT_DIR, label=LBL)
 
     # Phase 3: All-trees vs street-trees correlation
     print("\n  Computing all-trees vs street-trees correlation...")
