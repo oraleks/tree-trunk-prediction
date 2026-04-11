@@ -28,6 +28,7 @@ Crown delineation from orthophotos struggles with overlapping canopies. The hypo
 | `batch_extract_features.py` | Batch feature extraction for multiple shapefiles with geometry repair |
 | `batch_predict_trees.py` | Batch tree count prediction (single-tree filter + Ridge) |
 | `batch_generate_points.py` | Batch tree trunk point generation with crown area/diameter |
+| `urban_forest_analysis.py` | Urban forest quality analysis across 39 cities → `plots_urban_forest/` + `urban_forest_report.md` |
 
 ## Step 1 -- Feature Engineering (`feature_utils.py`)
 

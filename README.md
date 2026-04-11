@@ -101,6 +101,14 @@ Prediction uses a two-step approach:
 
 Each tree point carries `crown_area` (polygon area / N trees) and `crown_diam` (equivalent diameter).
 
+### Urban forest quality analysis
+
+```bash
+python urban_forest_analysis.py [data_dir]
+```
+
+Analyzes crown diameter distributions across all cities, produces 10 diagnostic plots in `plots_urban_forest/` and a comprehensive report (`urban_forest_report.md`). Computes a composite quality score ranking cities by median crown diameter, large tree fraction, crown diversity, and tree count.
+
 ### Generate estimated tree locations (programmatic)
 
 ```python
@@ -137,6 +145,7 @@ eval_3feat_catboost.py        # CatBoost 3-feature evaluation + report + plots
 batch_extract_features.py     # Batch feature extraction with geometry repair
 batch_predict_trees.py        # Batch tree count prediction (Ridge + single-tree filter)
 batch_generate_points.py      # Batch tree trunk point generation with crown metrics
+urban_forest_analysis.py      # Urban forest quality analysis (39 cities, 10 plots)
 feature_utils.py              # Morphological feature extraction module
 tree_point_generator.py       # Tree point placement using constrained k-means
 eval_old_model.py             # Old model evaluation script
@@ -150,6 +159,8 @@ model_features.json           # Feature list and model config
 plots/                        # Diagnostic plots (20-feature model)
 plots_old_model/              # Diagnostic plots (old 5-feature model)
 plots_3feat_catboost/         # Diagnostic plots (3-feature CatBoost)
+plots_urban_forest/           # Urban forest quality analysis plots (10)
+urban_forest_report.md        # Urban forest quality report
 old_model/                    # Previous CatBoost-based implementation
 ```
 
@@ -162,3 +173,4 @@ old_model/                    # Previous CatBoost-based implementation
 5. **Current dataset (479) is sufficient** -- models have captured 94-98.5% of their potential; the bottleneck is feature expressiveness, not data quantity.
 6. **Error scales with cluster size** -- reliable for 2-10 trees (MAE ~0.6-1.6), less so for 20+.
 7. **Tree point generation** -- constrained k-means places estimated trunk locations evenly inside each polygon, producing a point layer for GIS use.
+8. **Urban forest quality** -- Haifa leads with 7.1m median crown diameter (14.1% large trees), followed by Tel Aviv (6.7m) and Ramat Gan (6.7m). National median: 6.2m across 3.9M trees in 39 cities.

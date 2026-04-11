@@ -120,7 +120,14 @@ def process_file(shp_path, n_samples=500):
     t0 = time.time()
 
     gdf = gpd.read_file(shp_path)
+    original_crs = gdf.crs
     n_polygons = len(gdf)
+
+    # Reproject to metric CRS if needed (for correct area computation and point placement)
+    TARGET_CRS = 2039
+    if gdf.crs is not None and not gdf.crs.is_projected:
+        print(f"  Reprojecting from {gdf.crs} to EPSG:{TARGET_CRS} (metric)")
+        gdf = gdf.to_crs(epsg=TARGET_CRS)
 
     # Determine the prediction column name
     if 'pred_trees' in gdf.columns:
@@ -171,6 +178,10 @@ def process_file(shp_path, n_samples=500):
 
     # Create output GeoDataFrame
     points_gdf = gpd.GeoDataFrame(records, crs=gdf.crs)
+
+    # Reproject back to original CRS if we reprojected
+    if original_crs is not None and original_crs != gdf.crs:
+        points_gdf = points_gdf.to_crs(original_crs)
 
     # Save
     points_gdf.to_file(out_path)
