@@ -59,7 +59,7 @@ CITY_NAMES = {
     'BTY': 'Bat Yam', 'ELT': 'Eilat', 'GTM': 'Givatayim',
     'HAI': 'Haifa', 'HDR': 'Hadera', 'HDS': 'Hod HaSharon',
     'HOL': 'Holon', 'HRZ': 'Herzliya', 'JER': 'Jerusalem',
-    'KAT': 'Kfar Saba', 'KFS': 'Kfar Saba', 'KGT': 'Kiryat Gat',
+    'KAT': 'Kiryat Ata', 'KFS': 'Kfar Saba', 'KGT': 'Kiryat Gat',
     'LOD': 'Lod', 'MDN': 'Modiin', 'NHR': 'Nahariya',
     'NSZ': 'Ness Ziona', 'NTN': 'Netanya', 'NTV': 'Netivot',
     'NZR': 'Nazareth', 'PHK': 'Pardes Hanna-Karkur', 'PTV': 'Petah Tikva',

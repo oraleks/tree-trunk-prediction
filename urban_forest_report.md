@@ -70,7 +70,7 @@ The national distribution is right-skewed, with most trees in the 4-8m crown dia
 | 11 | RAN | Raanana | 6.4 | 6.3 | 2.9 | 47,642 |
 | 12 | NHR | Nahariya | 6.3 | 6.5 | 3.2 | 22,227 |
 | 13 | HDR | Hadera | 6.3 | 6.6 | 3.8 | 110,331 |
-| 14 | KAT | Kfar Saba | 6.3 | 6.4 | 3.3 | 55,064 |
+| 14 | KAT | Kiryat Ata | 6.3 | 6.4 | 3.3 | 55,064 |
 | 15 | NTN | Netanya | 6.2 | 6.5 | 3.0 | 74,475 |
 | 16 | BBK | Bnei Brak | 6.1 | 6.0 | 3.6 | 27,837 |
 | 17 | AKO | Akko | 6.1 | 6.4 | 2.9 | 25,055 |
@@ -117,7 +117,7 @@ The national distribution is right-skewed, with most trees in the 4-8m crown dia
 | 7 | PTV | Petah Tikva | 0.703 | 6.5 m | 8.7% | 65,850 |
 | 9 | PHK | Pardes Hanna-Karkur | 0.667 | 6.6 m | 7.5% | 44,381 |
 | 10 | NTN | Netanya | 0.656 | 6.2 m | 8.0% | 74,475 |
-| 11 | KAT | Kfar Saba | 0.638 | 6.3 m | 7.8% | 55,064 |
+| 11 | KAT | Kiryat Ata | 0.638 | 6.3 m | 7.8% | 55,064 |
 | 12 | NHR | Nahariya | 0.588 | 6.3 m | 8.8% | 22,227 |
 | 13 | HDS | Hod HaSharon | 0.586 | 6.6 m | 6.7% | 44,197 |
 | 14 | RLZ | Rishon LeZion | 0.571 | 6.0 m | 6.3% | 204,934 |
@@ -253,7 +253,7 @@ No cities have 99th percentile > 25m.
 | PTV | Petah Tikva | 65,850 | 34,677 | 6.5 | 6.7 | 2.3 | 5.0 | 8.2 | 8.7 | 12.9 | 0.35 | 40 | 0.703 |
 | PHK | Pardes Hanna-Karkur | 44,381 | 20,858 | 6.6 | 6.8 | 2.4 | 5.2 | 8.2 | 7.5 | 11.2 | 0.36 | 34 | 0.667 |
 | NTN | Netanya | 74,475 | 41,133 | 6.2 | 6.5 | 2.4 | 4.8 | 7.8 | 8.0 | 15.2 | 0.37 | 43 | 0.656 |
-| KAT | Kfar Saba | 55,064 | 30,524 | 6.3 | 6.4 | 2.6 | 4.6 | 7.9 | 7.8 | 18.2 | 0.41 | 44 | 0.638 |
+| KAT | Kiryat Ata | 55,064 | 30,524 | 6.3 | 6.4 | 2.6 | 4.6 | 7.9 | 7.8 | 18.2 | 0.41 | 44 | 0.638 |
 | NHR | Nahariya | 22,227 | 11,723 | 6.3 | 6.5 | 2.4 | 4.7 | 7.9 | 8.8 | 15.3 | 0.37 | 41 | 0.588 |
 | HDS | Hod HaSharon | 44,197 | 19,039 | 6.6 | 6.7 | 2.1 | 5.4 | 8.0 | 6.7 | 10.7 | 0.32 | 31 | 0.586 |
 | RLZ | Rishon LeZion | 204,934 | 119,784 | 6.0 | 5.9 | 2.7 | 3.8 | 7.6 | 6.3 | 26.3 | 0.46 | 48 | 0.571 |
