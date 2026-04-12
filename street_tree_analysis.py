@@ -18,7 +18,8 @@ import glob
 
 # Reuse the core analysis from urban_forest_analysis.py
 from urban_forest_analysis import (
-    compute_city_stats, save_plot, DIAM_BINS, SIZE_CLASSES, CITY_NAMES,
+    compute_city_stats, save_plot, export_to_excel,
+    DIAM_BINS, SIZE_CLASSES, CITY_NAMES,
     plot_01_national_histogram,
     plot_02_city_grid,
     plot_03_city_boxplots,
@@ -371,10 +372,15 @@ def main():
         f.write(report)
     print(f"  Saved {REPORT_FILE}")
 
+    # Phase 5: Export to Excel
+    print("\nPhase 4: Exporting to Excel...")
+    export_to_excel(df, national_stats, hist_array, 'street_trees_data.xlsx')
+
     # Summary
     print(f"\n{'='*60}")
     print(f"Analysis complete!")
     print(f"  Report: {REPORT_FILE}")
+    print(f"  Excel:  street_trees_data.xlsx")
     print(f"  Plots:  {PLOT_DIR}/ (11 files)")
     print(f"\nTop 5 cities by street tree quality:")
     top5 = df.sort_values('quality_score', ascending=False).head(5)

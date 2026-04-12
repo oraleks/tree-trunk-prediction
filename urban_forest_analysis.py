@@ -173,6 +173,8 @@ def compute_city_stats(trunk_file):
 def compute_all_cities(data_dir):
     """Compute statistics for all cities and national aggregates."""
     trunk_files = sorted(glob.glob(os.path.join(data_dir, '*_tree_trunks_*.shp')))
+    # Exclude street-tree-only files
+    trunk_files = [f for f in trunk_files if '_streets' not in f]
 
     if not trunk_files:
         print(f"No *_tree_trunks_*.shp files found in {data_dir}")
@@ -804,6 +806,64 @@ All plots saved to `plots_urban_forest/`:
 
 
 # =====================================================================
+# Excel export
+# =====================================================================
+
+def export_to_excel(df, national_stats, hist_array, output_file):
+    """Export all analysis data to a multi-sheet Excel file."""
+
+    bin_labels = [f'{DIAM_BINS[i]}-{DIAM_BINS[i+1]}m' for i in range(len(DIAM_BINS) - 1)]
+    size_class_cols = [f'class_{k}' for k in SIZE_CLASSES.keys()]
+
+    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+        # Sheet 1: City Statistics
+        stats_cols = ['city', 'city_name', 'year', 'n_trees', 'n_polygons', 'trees_per_polygon',
+                      'diam_mean', 'diam_median', 'diam_std', 'diam_cv', 'diam_iqr',
+                      'diam_q10', 'diam_q25', 'diam_q75', 'diam_q90', 'diam_p99', 'diam_max',
+                      'diam_skew', 'area_mean', 'area_median',
+                      'single_tree_frac', 'single_diam_mean', 'single_diam_median',
+                      'large_tree_pct', 'small_tree_pct', 'quality_score', 'quality_rank']
+        available = [c for c in stats_cols if c in df.columns]
+        df_sorted = df.sort_values('quality_score', ascending=False)
+        df_sorted[available].to_excel(writer, sheet_name='City Statistics', index=False)
+
+        # Sheet 2: Histogram Bin Counts
+        hist_df = pd.DataFrame(hist_array, columns=bin_labels)
+        hist_df.insert(0, 'city', df['city'].values)
+        hist_df.insert(1, 'city_name', df['city_name'].values)
+        hist_df.to_excel(writer, sheet_name='Histogram Bins', index=False)
+
+        # Sheet 3: Size Classes
+        sc_df = df[['city', 'city_name'] + size_class_cols].copy()
+        sc_df.columns = ['city', 'city_name'] + list(SIZE_CLASSES.keys())
+        sc_df.to_excel(writer, sheet_name='Size Classes', index=False)
+
+        # Sheet 4: National Summary
+        nat_data = {
+            'Metric': ['Total Trees', 'Total Polygons', 'Number of Cities',
+                       'National Mean Crown Diam (m)', 'National Median Crown Diam (m)',
+                       'Large Trees >= 10m (%)', 'Small Trees < 4m (%)'],
+            'Value': [national_stats['total_trees'], national_stats['total_polygons'],
+                      national_stats['n_cities'],
+                      round(national_stats['national_mean'], 2),
+                      round(national_stats['national_median'], 2),
+                      round(national_stats['national_large_pct'], 1),
+                      round(national_stats['national_small_pct'], 1)]
+        }
+        pd.DataFrame(nat_data).to_excel(writer, sheet_name='National Summary', index=False)
+
+        # Sheet 5: National Histogram
+        nat_hist_df = pd.DataFrame({
+            'Bin': bin_labels,
+            'Count': national_stats['national_hist'],
+            'Percentage': national_stats['national_hist'] / national_stats['national_hist'].sum() * 100
+        })
+        nat_hist_df.to_excel(writer, sheet_name='National Histogram', index=False)
+
+    print(f"  Saved {output_file} (5 sheets)")
+
+
+# =====================================================================
 # Main
 # =====================================================================
 
@@ -844,10 +904,15 @@ def main():
         f.write(report)
     print(f"  Saved {REPORT_FILE}")
 
+    # Phase 4: Export to Excel
+    print("\nPhase 4: Exporting to Excel...")
+    export_to_excel(df, national_stats, hist_array, 'urban_forest_data.xlsx')
+
     # Summary
     print(f"\n{'='*60}")
     print(f"Analysis complete!")
     print(f"  Report: {REPORT_FILE}")
+    print(f"  Excel:  urban_forest_data.xlsx")
     print(f"  Plots:  {PLOT_DIR}/ (10 files)")
     print(f"\nTop 5 cities by quality score:")
     top5 = df.sort_values('quality_score', ascending=False).head(5)
