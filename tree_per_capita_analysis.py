@@ -46,7 +46,10 @@ STREET_TREES_XLSX = "street_trees_data.xlsx"
 SHADE_INDEX_XLSX = "shade_index_data.xlsx"
 OUTPUT_XLSX = "population_analysis.xlsx"
 PLOT_DIR = "plots_shade_index"
+PLOT_DIR_TPC = "plots_tree_per_capita"
 CORR_PLOT = os.path.join(PLOT_DIR, "04_si_vs_street_trees_per_capita.png")
+BAR_ALL_PLOT = os.path.join(PLOT_DIR_TPC, "01_trees_per_capita_all_cities.png")
+BAR_STREET_PLOT = os.path.join(PLOT_DIR_TPC, "02_street_trees_per_capita.png")
 
 # Mapping: city code -> (English name, Hebrew name in CBS file)
 CITY_MAP = {
@@ -267,6 +270,67 @@ def build_workbook(pop_map, all_trees, street_trees, output_path):
 # Correlation plot
 # =====================================================================
 
+def plot_tpc_bar(pop_map, tree_counts, title_label, value_label, out_path):
+    """Horizontal bar chart of trees-per-capita across cities, ranked."""
+    records = []
+    for code in tree_counts:
+        eng, heb = CITY_MAP.get(code, (code, code))
+        pop = pop_map.get(heb, (None, None))[1]
+        if not pop or pop <= 0:
+            continue
+        n = tree_counts[code]
+        records.append({
+            'city': code,
+            'city_name': eng,
+            'population': pop,
+            'n_trees': n,
+            'trees_per_capita': n / pop,
+        })
+
+    if not records:
+        print(f"  SKIP: no data for {title_label}")
+        return None
+
+    df = pd.DataFrame(records).sort_values('trees_per_capita')
+
+    # Figure size scales with number of cities
+    fig, ax = plt.subplots(figsize=(10, max(6, len(df) * 0.35)))
+
+    # Color by tree-per-capita value (green gradient)
+    cmap = plt.cm.YlGn
+    norm = plt.Normalize(vmin=df['trees_per_capita'].min(),
+                          vmax=df['trees_per_capita'].max())
+    colors = [cmap(norm(v)) for v in df['trees_per_capita']]
+
+    ax.barh(range(len(df)), df['trees_per_capita'], color=colors,
+            edgecolor='black', linewidth=0.5)
+    ax.set_yticks(range(len(df)))
+    ax.set_yticklabels([f"{r['city']} ({r['city_name']})" for _, r in df.iterrows()],
+                       fontsize=10)
+    ax.set_xlabel(value_label, fontsize=12)
+    ax.set_title(f'{title_label} (n={len(df)} cities)', fontsize=13)
+
+    # Weighted mean line (by population)
+    weighted_mean = np.average(df['trees_per_capita'], weights=df['population'])
+    ax.axvline(weighted_mean, color='red', linestyle='--', linewidth=2,
+               label=f'Population-weighted mean = {weighted_mean:.3f}')
+    ax.legend(fontsize=11, loc='lower right')
+
+    # Value labels
+    for i, (_, row) in enumerate(df.iterrows()):
+        ax.text(row['trees_per_capita'] + df['trees_per_capita'].max() * 0.005,
+                i, f"{row['trees_per_capita']:.3f}",
+                va='center', fontsize=9)
+
+    ax.set_xlim(0, df['trees_per_capita'].max() * 1.15)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  Saved {out_path}")
+
+    return df
+
+
 def plot_si_vs_street_tpc(pop_map, street_trees, shade_idx, out_path):
     """Correlation: street trees per capita vs mean SI (18 cities)."""
     records = []
@@ -334,6 +398,7 @@ def plot_si_vs_street_tpc(pop_map, street_trees, shade_idx, out_path):
 
 def main():
     os.makedirs(PLOT_DIR, exist_ok=True)
+    os.makedirs(PLOT_DIR_TPC, exist_ok=True)
 
     print("=" * 60)
     print("Trees per Capita Analysis")
@@ -357,6 +422,16 @@ def main():
     n_all, n_street = build_workbook(pop_map, all_trees, street_trees, OUTPUT_XLSX)
     print(f"  All cities sheet: {n_all} rows")
     print(f"  Street cities sheet: {n_street} rows")
+
+    print("\nGenerating per-capita bar charts...")
+    plot_tpc_bar(pop_map, all_trees,
+                 'Trees per Capita by City (All Trees)',
+                 'Trees per Capita',
+                 BAR_ALL_PLOT)
+    plot_tpc_bar(pop_map, street_trees,
+                 'Street Trees per Capita by City',
+                 'Street Trees per Capita',
+                 BAR_STREET_PLOT)
 
     print("\nGenerating correlation plot...")
     result = plot_si_vs_street_tpc(pop_map, street_trees, shade_idx, CORR_PLOT)
