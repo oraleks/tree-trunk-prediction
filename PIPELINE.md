@@ -53,6 +53,15 @@ Raw tree crown polygons (XXX_tree_canopies_YYYY.shp)
                    v
          [7] street_tree_analysis.py
              -> plots_street_trees/, street_trees_report.md, street_trees_data.xlsx
+
+Solar exposure raster + Street network polygon
+         |
+         v
+ [8] shade_index_analysis.py
+     Zonal statistics + per-pixel Shade Index (SI = 1 - kdown/city_max)
+         |
+         v
+ shade_index_data.xlsx, plots_shade_index/, shade_index_report.md
 ```
 
 ## Data Locations
@@ -255,6 +264,42 @@ python street_tree_analysis.py
 - [street_trees_report.md](street_trees_report.md) — comprehensive report
 - [plots_street_trees/](plots_street_trees/) — 11 plots (all 10 standard plots labeled "Street Trees:" + correlation plot)
 - [street_trees_data.xlsx](street_trees_data.xlsx) — 5 sheets for custom plotting
+
+---
+
+## Step 8: Street Shade Index Analysis
+
+**Script**: [shade_index_analysis.py](shade_index_analysis.py)
+
+**What it does**:
+For each city that has both a solar exposure raster and a street network polygon:
+1. Compute the raster's global maximum cumulative kdown (via windowed reads — avoids loading 1+ GB into memory)
+2. Mask the raster with the street network polygon (`rasterio.mask.mask(crop=True)`)
+3. Compute per-pixel Shade Index: `SI = 1 - (pixel_kdown / city_max_kdown)`
+4. Aggregate to a single city-average SI (mean across all street pixels)
+
+**Shade Index interpretation**:
+- `SI = 0` → no shading (direct sun throughout the day)
+- `SI = 1` → fully shaded
+- Typical urban values: 0.04-0.28
+
+**Usage**:
+```bash
+python shade_index_analysis.py
+```
+
+**Input**:
+- `d:\OneDrive - Technion\Research\Shade Maps\Israel solar exposure\XXX_all_kdown_1999_218_SUM.tif`
+- `XXX_street_network_polygon.shp` (from Step 5)
+- `street_trees_data.xlsx` (from Step 7) — for the correlation plot
+
+**Outputs**:
+- `shade_index_data.xlsx` — per-city SI data (Excel for custom plotting)
+- `plots_shade_index/01_si_per_city.png` — ranked bar chart of SI by city
+- `plots_shade_index/02_si_vs_crown_diameter.png` — SI vs median street tree crown diameter (correlation plot)
+- `shade_index_report.md` — comprehensive report
+
+**Typical result**: Pearson r ≈ 0.74 between median street tree crown diameter and street average SI — tree canopy is a major driver of street shading.
 
 ---
 
