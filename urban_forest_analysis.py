@@ -56,7 +56,7 @@ SIZE_CLASSES = {
 CITY_NAMES = {
     'AFL': 'Afula', 'AKO': 'Akko', 'ASD': 'Ashdod', 'ASK': 'Ashkelon',
     'BBK': 'Bnei Brak', 'BSM': 'Beit Shemesh', 'BSV': 'Beersheva',
-    'BTY': 'Bat Yam', 'ELT': 'Eilat', 'GTM': 'Givatayim',
+    'BTR': 'Beitar Ilit', 'BTY': 'Bat Yam', 'ELT': 'Eilat', 'GTM': 'Givatayim',
     'HAI': 'Haifa', 'HDR': 'Hadera', 'HDS': 'Hod HaSharon',
     'HOL': 'Holon', 'HRZ': 'Herzliya', 'JER': 'Jerusalem',
     'KAT': 'Kiryat Ata', 'KFS': 'Kfar Saba', 'KGT': 'Kiryat Gat',
