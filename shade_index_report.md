@@ -87,6 +87,39 @@ Interpretation: There is a **strong positive correlation** between median street
 | BSV | Beersheva | 4.9 | 0.0666 |
 | NTV | Netivot | 4.7 | 0.0409 |
 
+## Correlation with Street Tree Density
+
+![SI vs Tree Density](plots_shade_index/03_si_vs_tree_density.png)
+
+Street tree density is computed as number of street trees divided by street network area (trees per km²). This normalizes for city size, giving a fair per-unit-area comparison.
+
+**Correlation**: Pearson r = 0.881, Spearman rho = 0.889
+
+Interpretation: There is a **strong positive correlation** between street tree density and street-average Shade Index.
+
+### Detailed Data
+
+| City | Name | Street Trees | Street Area (km²) | Density (trees/km²) | Mean SI |
+|------|------|-------------:|------------------:|--------------------:|--------:|
+| KFS | Kfar Saba | 14,525 | 2.44 | 5,949 | 0.2742 |
+| TLV | Tel Aviv | 59,208 | 10.68 | 5,542 | 0.2520 |
+| HRZ | Herzliya | 18,846 | 2.99 | 6,308 | 0.2298 |
+| RAN | Raanana | 14,885 | 2.08 | 7,142 | 0.2274 |
+| HDS | Hod HaSharon | 10,906 | 1.91 | 5,699 | 0.2097 |
+| PTV | Petah Tikva | 18,732 | 4.54 | 4,122 | 0.1933 |
+| BTY | Bat Yam | 6,428 | 1.57 | 4,085 | 0.1836 |
+| HOL | Holon | 14,223 | 3.27 | 4,352 | 0.1756 |
+| NSZ | Ness Ziona | 8,190 | 1.54 | 5,328 | 0.1709 |
+| NTN | Netanya | 19,466 | 5.33 | 3,654 | 0.1365 |
+| PHK | Pardes Hanna-Karkur | 7,875 | 1.71 | 4,596 | 0.1215 |
+| HAI | Haifa | 29,656 | 7.92 | 3,742 | 0.1009 |
+| BTR | Beitar Ilit | 2,528 | 0.68 | 3,719 | 0.0952 |
+| AKO | Akko | 4,030 | 2.04 | 1,977 | 0.0830 |
+| ELT | Eilat | 4,145 | 2.48 | 1,674 | 0.0754 |
+| SDR | Sderot | 4,902 | 1.59 | 3,077 | 0.0707 |
+| BSV | Beersheva | 25,033 | 8.59 | 2,913 | 0.0666 |
+| NTV | Netivot | 3,238 | 1.63 | 1,992 | 0.0409 |
+
 ## Limitations
 
 1. **Raster max as reference**: The global max per city may not be a perfectly unshaded point (e.g., if the entire city is partially shaded, the max is biased downward). Using absolute solar constants would change values but not the relative ranking.
@@ -98,4 +131,5 @@ Interpretation: There is a **strong positive correlation** between median street
 
 - `shade_index_data.xlsx` -- per-city SI data (for custom plotting)
 - `plots_shade_index/01_si_per_city.png` -- ranked bar chart
-- `plots_shade_index/02_si_vs_crown_diameter.png` -- correlation scatter
+- `plots_shade_index/02_si_vs_crown_diameter.png` -- SI vs crown diameter
+- `plots_shade_index/03_si_vs_tree_density.png` -- SI vs tree density

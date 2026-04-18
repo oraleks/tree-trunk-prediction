@@ -261,6 +261,54 @@ def plot_02_si_vs_crown_diameter(df, out_dir):
     return merged, r_pear, r_spear
 
 
+def plot_03_si_vs_tree_density(df, out_dir):
+    """Correlation scatter: street tree density (trees/km^2) vs mean SI."""
+    if not os.path.exists(STREET_TREES_EXCEL):
+        print(f"  SKIP: {STREET_TREES_EXCEL} not found -- run street_tree_analysis.py first")
+        return None
+
+    trees = pd.read_excel(STREET_TREES_EXCEL, sheet_name='City Statistics')
+    merged = df.merge(trees[['city', 'n_trees']], on='city', how='inner')
+    merged = merged.rename(columns={'n_trees': 'n_street_trees'})
+    merged['tree_density'] = merged['n_street_trees'] / (merged['street_area_m2'] / 1e6)
+
+    if len(merged) == 0:
+        return None
+
+    r_pear, p_pear = pearsonr(merged['tree_density'], merged['mean_SI'])
+    r_spear, p_spear = spearmanr(merged['tree_density'], merged['mean_SI'])
+
+    fig, ax = plt.subplots(figsize=(9, 9))
+    ax.scatter(merged['tree_density'], merged['mean_SI'], s=80,
+               c='forestgreen', edgecolors='black', linewidth=0.5, alpha=0.8, zorder=5)
+
+    z = np.polyfit(merged['tree_density'], merged['mean_SI'], 1)
+    xline = np.linspace(merged['tree_density'].min() * 0.95,
+                         merged['tree_density'].max() * 1.05, 100)
+    ax.plot(xline, np.polyval(z, xline), 'b-', linewidth=1.5, alpha=0.7,
+            label=f'Fit: y={z[0]:.2e}x{z[1]:+.3f}', zorder=4)
+
+    for _, row in merged.iterrows():
+        ax.annotate(row['city'], (row['tree_density'], row['mean_SI']),
+                    textcoords='offset points', xytext=(5, 5), fontsize=9)
+
+    ax.set_xlabel('Street Tree Density (trees per km² of street area)', fontsize=13)
+    ax.set_ylabel('Mean Street Shade Index', fontsize=13)
+    ax.set_title(f'Shade Index vs Street Tree Density (n={len(merged)})\n'
+                 f'Pearson r={r_pear:.3f} (p={p_pear:.4f}), '
+                 f'Spearman rho={r_spear:.3f} (p={p_spear:.4f})',
+                 fontsize=12)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    path = os.path.join(out_dir, '03_si_vs_tree_density.png')
+    fig.savefig(path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  Saved {path}")
+
+    return merged, r_pear, r_spear
+
+
 def export_excel(df, filename):
     """Export shade index data to Excel."""
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
@@ -289,7 +337,8 @@ def export_excel(df, filename):
     print(f"  Saved {filename}")
 
 
-def generate_report(df, corr_data, r_pear, r_spear):
+def generate_report(df, corr_data, r_pear, r_spear,
+                    corr_density=None, r_pear_d=None, r_spear_d=None):
     """Generate markdown report."""
     sorted_df = df.sort_values('mean_SI', ascending=False)
     nat_avg = np.average(df['mean_SI'], weights=df['n_pixels'])
@@ -363,6 +412,34 @@ Interpretation: There is a **{strength} {direction} correlation** between median
             report += (f"| {row['city']} | {row['city_name']} | "
                        f"{row['street_median_diam']:.1f} | {row['mean_SI']:.4f} |\n")
 
+    if corr_density is not None:
+        direction_d = "positive" if r_pear_d > 0 else "negative"
+        strength_d = ("strong" if abs(r_pear_d) >= 0.7 else
+                      "moderate" if abs(r_pear_d) >= 0.4 else
+                      "weak" if abs(r_pear_d) >= 0.2 else "very weak")
+        report += f"""
+## Correlation with Street Tree Density
+
+![SI vs Tree Density](plots_shade_index/03_si_vs_tree_density.png)
+
+Street tree density is computed as number of street trees divided by street network area (trees per km²). This normalizes for city size, giving a fair per-unit-area comparison.
+
+**Correlation**: Pearson r = {r_pear_d:.3f}, Spearman rho = {r_spear_d:.3f}
+
+Interpretation: There is a **{strength_d} {direction_d} correlation** between street tree density and street-average Shade Index.
+
+### Detailed Data
+
+| City | Name | Street Trees | Street Area (km²) | Density (trees/km²) | Mean SI |
+|------|------|-------------:|------------------:|--------------------:|--------:|
+"""
+        for _, row in corr_density.sort_values('mean_SI', ascending=False).iterrows():
+            report += (f"| {row['city']} | {row['city_name']} | "
+                       f"{int(row['n_street_trees']):,} | "
+                       f"{row['street_area_m2']/1e6:.2f} | "
+                       f"{row['tree_density']:,.0f} | "
+                       f"{row['mean_SI']:.4f} |\n")
+
     report += """
 ## Limitations
 
@@ -375,7 +452,8 @@ Interpretation: There is a **{strength} {direction} correlation** between median
 
 - `shade_index_data.xlsx` -- per-city SI data (for custom plotting)
 - `plots_shade_index/01_si_per_city.png` -- ranked bar chart
-- `plots_shade_index/02_si_vs_crown_diameter.png` -- correlation scatter
+- `plots_shade_index/02_si_vs_crown_diameter.png` -- SI vs crown diameter
+- `plots_shade_index/03_si_vs_tree_density.png` -- SI vs tree density
 """
     return report
 
@@ -413,6 +491,7 @@ def main():
     print("\nGenerating plots...")
     plot_01_si_per_city(df, PLOT_DIR)
     corr = plot_02_si_vs_crown_diameter(df, PLOT_DIR)
+    corr_density = plot_03_si_vs_tree_density(df, PLOT_DIR)
 
     # Excel export
     print("\nExporting Excel...")
@@ -424,7 +503,12 @@ def main():
         corr_data, r_pear, r_spear = corr
     else:
         corr_data, r_pear, r_spear = None, None, None
-    report = generate_report(df, corr_data, r_pear, r_spear)
+    if corr_density is not None:
+        corr_dens_data, r_pear_d, r_spear_d = corr_density
+    else:
+        corr_dens_data, r_pear_d, r_spear_d = None, None, None
+    report = generate_report(df, corr_data, r_pear, r_spear,
+                              corr_dens_data, r_pear_d, r_spear_d)
     with open(REPORT_FILE, 'w', encoding='utf-8') as f:
         f.write(report)
     print(f"  Saved {REPORT_FILE}")
@@ -438,6 +522,9 @@ def main():
     if corr_data is not None:
         print(f"\nCorrelation with street tree crown diameter:")
         print(f"  Pearson r = {r_pear:.3f}, Spearman rho = {r_spear:.3f}")
+    if corr_dens_data is not None:
+        print(f"\nCorrelation with street tree density:")
+        print(f"  Pearson r = {r_pear_d:.3f}, Spearman rho = {r_spear_d:.3f}")
 
 
 if __name__ == '__main__':
