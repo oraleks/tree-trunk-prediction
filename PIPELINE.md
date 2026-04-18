@@ -62,6 +62,16 @@ Solar exposure raster + Street network polygon
          |
          v
  shade_index_data.xlsx, plots_shade_index/, shade_index_report.md
+         |
+         v
+ Population data (CBS) + Trees data
+         |
+         v
+ [9] tree_per_capita_analysis.py
+     Match Hebrew city names, compute trees/capita, correlate with SI
+         |
+         v
+ population_analysis.xlsx, plots_shade_index/04_*.png
 ```
 
 ## Data Locations
@@ -300,6 +310,38 @@ python shade_index_analysis.py
 - `shade_index_report.md` — comprehensive report
 
 **Typical result**: Pearson r ≈ 0.74 between median street tree crown diameter and street average SI — tree canopy is a major driver of street shading.
+
+---
+
+## Step 9: Trees per Capita Analysis
+
+**Script**: [tree_per_capita_analysis.py](tree_per_capita_analysis.py)
+
+**What it does**:
+1. Loads Israel CBS population data (end-2023) and matches Hebrew city names to our 3-letter city codes
+2. Combines with tree counts from both `urban_forest_data.xlsx` (all trees, 40 cities) and `street_trees_data.xlsx` (street trees, 18 cities)
+3. Creates a multi-sheet Excel workbook with Excel formulas for trees-per-capita (live-updates if population or tree counts are edited)
+4. Produces a correlation plot of street trees per capita vs mean street Shade Index
+
+**Usage**:
+```bash
+python tree_per_capita_analysis.py
+```
+
+**Input**:
+- `d:\OneDrive - Technion\Research\Shade Maps\Data\Copy of אוכלוסייה...xlsx` (CBS file)
+- `urban_forest_data.xlsx` (from Step 4a)
+- `street_trees_data.xlsx` (from Step 7)
+- `shade_index_data.xlsx` (from Step 8)
+
+**Outputs**:
+- `population_analysis.xlsx` — 3 sheets:
+  - **Population All Cities** — code, English name, Hebrew name, CBS code, population (40 cities)
+  - **Trees Per Capita - All Cities** — plus total trees + live `=E/D` formula (40 cities)
+  - **Trees Per Capita - Streets** — plus street trees + live formula (18 cities)
+- `plots_shade_index/04_si_vs_street_trees_per_capita.png` — correlation plot
+
+**Typical result**: Pearson r ≈ 0.45 between street trees per capita and mean SI — a moderate positive correlation, weaker than tree density or crown diameter alone, suggesting per-capita metrics are less directly tied to shade than per-area metrics.
 
 ---
 
