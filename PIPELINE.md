@@ -339,6 +339,9 @@ python tree_per_capita_analysis.py
   - **Population All Cities** — code, English name, Hebrew name, CBS code, population (40 cities)
   - **Trees Per Capita - All Cities** — plus total trees + live `=E/D` formula (40 cities)
   - **Trees Per Capita - Streets** — plus street trees + live formula (18 cities)
+- `plots_tree_per_capita/` — bar charts:
+  - `01_trees_per_capita_all_cities.png` — ranked all-trees per capita for 40 cities
+  - `02_street_trees_per_capita.png` — ranked street-trees per capita for 18 cities
 - `plots_shade_index/04_si_vs_street_trees_per_capita.png` — correlation plot
 
 **Typical result**: Pearson r ≈ 0.45 between street trees per capita and mean SI — a moderate positive correlation, weaker than tree density or crown diameter alone, suggesting per-capita metrics are less directly tied to shade than per-area metrics.
