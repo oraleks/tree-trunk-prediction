@@ -91,6 +91,95 @@ def compute_global_max(src, window_size=2048):
     return global_max if global_max > -np.inf else np.nan
 
 
+MIN_SEGMENT_AREA = 250.0  # m^2 -- segments smaller than this are excluded
+
+
+def compute_segment_si_distribution(city_code, max_exposure):
+    """Compute per-segment mean SI for each street segment polygon.
+
+    Returns a dict with segment-level SI distribution stats, or None if
+    the segments file is missing.
+    """
+    seg_file = os.path.join(STREETS_DIR, f"{city_code}_street_segments.shp")
+    raster_file = os.path.join(SOLAR_DIR, f"{city_code}_all_kdown_1999_218_SUM.tif")
+
+    if not os.path.exists(seg_file):
+        return None
+    if max_exposure is None or not np.isfinite(max_exposure):
+        return None
+
+    seg_gdf = gpd.read_file(seg_file)
+
+    # Reproject to match raster CRS (EPSG:2039)
+    if seg_gdf.crs is not None and seg_gdf.crs.to_epsg() != 2039:
+        seg_gdf = seg_gdf.to_crs(epsg=2039)
+
+    # Strip Z if any (some files like NTN are PolygonZ)
+    def _strip_z(g):
+        if g is None or g.is_empty or not g.has_z:
+            return g
+        from shapely.geometry import Polygon, MultiPolygon
+        if g.geom_type == 'Polygon':
+            ext = [(x, y) for x, y, *_ in g.exterior.coords]
+            ints = [[(x, y) for x, y, *_ in r.coords] for r in g.interiors]
+            return Polygon(ext, ints)
+        if g.geom_type == 'MultiPolygon':
+            return MultiPolygon([_strip_z(p) for p in g.geoms])
+        return g
+    seg_gdf['geometry'] = seg_gdf.geometry.apply(_strip_z)
+    seg_gdf = seg_gdf[seg_gdf.geometry.notna() & ~seg_gdf.geometry.is_empty].copy()
+
+    # Filter by minimum area
+    seg_gdf['_area'] = seg_gdf.geometry.area
+    n_total_segs = len(seg_gdf)
+    seg_gdf = seg_gdf[seg_gdf['_area'] >= MIN_SEGMENT_AREA].copy()
+    n_kept = len(seg_gdf)
+
+    if n_kept == 0:
+        return None
+
+    segment_means = []
+    with rasterio.open(raster_file) as src:
+        for geom in seg_gdf.geometry:
+            try:
+                masked, _ = rio_mask(src, [mapping(geom)], crop=True,
+                                      filled=False, nodata=src.nodata)
+            except Exception:
+                continue
+            data = masked[0]
+            if hasattr(data, 'mask'):
+                valid = data.compressed()
+            else:
+                valid = data.ravel()
+            if src.nodata is not None:
+                valid = valid[valid != src.nodata]
+            if valid.size == 0:
+                continue
+            seg_si = 1.0 - (valid / max_exposure)
+            segment_means.append(float(seg_si.mean()))
+
+    if not segment_means:
+        return None
+
+    arr = np.array(segment_means)
+    p10, p25, p50, p75, p90 = np.percentile(arr, [10, 25, 50, 75, 90])
+
+    return {
+        'seg_n_total': n_total_segs,
+        'seg_n_kept': n_kept,
+        'seg_mean_SI': float(arr.mean()),
+        'seg_std_SI': float(arr.std()),
+        'seg_min_SI': float(arr.min()),
+        'seg_P10_SI': float(p10),
+        'seg_P25_SI': float(p25),
+        'seg_median_SI': float(p50),
+        'seg_P75_SI': float(p75),
+        'seg_P90_SI': float(p90),
+        'seg_max_SI': float(arr.max()),
+        'seg_IQR_SI': float(p75 - p25),
+    }
+
+
 def compute_city_shade_index(city_code):
     """Compute Shade Index statistics for one city."""
     raster_file = os.path.join(SOLAR_DIR, f"{city_code}_all_kdown_1999_218_SUM.tif")
@@ -160,7 +249,14 @@ def compute_city_shade_index(city_code):
           f"P10={p10:.3f} P50={p50:.3f} P90={p90:.3f}, "
           f"pixels={n_pixels:,}, area={street_area_m2/1e6:.2f} km2 ({elapsed:.1f}s)")
 
-    return {
+    # Per-segment SI distribution (segments >= 250 m^2)
+    seg_stats = compute_segment_si_distribution(city_code, max_exposure)
+    if seg_stats:
+        print(f"  Segments: {seg_stats['seg_n_kept']:,}/{seg_stats['seg_n_total']:,} "
+              f"(>= {MIN_SEGMENT_AREA:.0f} m^2), seg_mean_SI={seg_stats['seg_mean_SI']:.4f}, "
+              f"seg_P50={seg_stats['seg_median_SI']:.4f}")
+
+    result = {
         'city': city_code,
         'city_name': CITY_NAMES.get(city_code, city_code),
         'max_exposure': max_exposure,
@@ -180,6 +276,9 @@ def compute_city_shade_index(city_code):
         'n_pixels': n_pixels,
         'street_area_m2': street_area_m2,
     }
+    if seg_stats:
+        result.update(seg_stats)
+    return result
 
 
 def plot_01_si_per_city(df, out_dir):
@@ -379,6 +478,17 @@ def export_excel(df, filename):
         pct_cols = ['city', 'city_name', 'P10_SI', 'P25_SI', 'median_SI',
                     'P75_SI', 'P90_SI']
         df_sorted[pct_cols].to_excel(writer, sheet_name='SI Percentiles', index=False)
+
+        # Per-segment SI distribution (segments >= 250 m^2)
+        seg_cols = ['city', 'city_name', 'seg_n_kept', 'seg_n_total',
+                    'seg_mean_SI', 'seg_std_SI', 'seg_min_SI',
+                    'seg_P10_SI', 'seg_P25_SI', 'seg_median_SI',
+                    'seg_P75_SI', 'seg_P90_SI', 'seg_max_SI', 'seg_IQR_SI']
+        seg_available = [c for c in seg_cols if c in df_sorted.columns]
+        seg_df = df_sorted[seg_available].dropna(subset=['seg_mean_SI']) \
+            if 'seg_mean_SI' in df_sorted.columns else pd.DataFrame()
+        if not seg_df.empty:
+            seg_df.to_excel(writer, sheet_name='SI Per Street Segment', index=False)
 
         # Summary sheet
         summary = pd.DataFrame({
