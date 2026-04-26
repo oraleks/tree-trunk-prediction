@@ -284,9 +284,9 @@ python street_tree_analysis.py
 **What it does**:
 For each city that has both a solar exposure raster and a street network polygon:
 1. Compute the raster's global maximum cumulative kdown (via windowed reads — avoids loading 1+ GB into memory)
-2. Mask the raster with the street network polygon (`rasterio.mask.mask(crop=True)`)
-3. Compute per-pixel Shade Index: `SI = 1 - (pixel_kdown / city_max_kdown)`
-4. Aggregate to a single city-average SI (mean across all street pixels)
+2. **Per-pixel analysis**: mask the raster with the dissolved street network polygon, compute per-pixel SI = `1 - (pixel_kdown / city_max_kdown)`, then aggregate to mean, std, P10/P25/P50/P75/P90, IQR, min/max
+3. **Per-segment analysis**: for each individual street segment polygon (from `XXX_street_segments.shp`) with area >= 250 m², mask the raster, compute the segment's mean pixel SI, then aggregate the per-segment means to the same set of statistics
+4. Correlate city mean SI with median street tree crown diameter and street tree density
 
 **Shade Index interpretation**:
 - `SI = 0` → no shading (direct sun throughout the day)
@@ -300,16 +300,23 @@ python shade_index_analysis.py
 
 **Input**:
 - `d:\OneDrive - Technion\Research\Shade Maps\Israel solar exposure\XXX_all_kdown_1999_218_SUM.tif`
-- `XXX_street_network_polygon.shp` (from Step 5)
+- `XXX_street_network_polygon.shp` (from Step 5) — for the per-pixel analysis
+- `XXX_street_segments.shp` (raw, from data folder) — for the per-segment analysis
 - `street_trees_data.xlsx` (from Step 7) — for the correlation plot
 
 **Outputs**:
-- `shade_index_data.xlsx` — per-city SI data (Excel for custom plotting)
-- `plots_shade_index/01_si_per_city.png` — ranked bar chart of SI by city
-- `plots_shade_index/02_si_vs_crown_diameter.png` — SI vs median street tree crown diameter (correlation plot)
+- `shade_index_data.xlsx` — 4 sheets:
+  - **Shade Index** — per-pixel statistics (mean, std, P10/P25/P50/P75/P90, IQR, min/max, exposure values, pixel count, street area)
+  - **SI Percentiles** — compact view of just the percentile columns for easy plotting
+  - **SI Per Street Segment** — per-segment statistics (segments >= 250 m² only); useful when you want one SI value per actual street rather than per pixel
+  - **Summary** — single-row national totals
+- `plots_shade_index/01_si_per_city.png` — ranked bar chart of mean SI
+- `plots_shade_index/02_si_vs_crown_diameter.png` — SI vs median street tree crown diameter
+- `plots_shade_index/03_si_vs_tree_density.png` — SI vs street tree density (trees/km²)
+- `plots_shade_index/05_si_distribution_per_city.png` — per-city box plot from per-pixel percentiles
 - `shade_index_report.md` — comprehensive report
 
-**Typical result**: Pearson r ≈ 0.74 between median street tree crown diameter and street average SI — tree canopy is a major driver of street shading.
+**Typical result**: Pearson r ≈ 0.88 between street tree density and mean SI; r ≈ 0.74 between crown diameter and SI. Tree canopy is a major driver of street shading.
 
 ---
 
