@@ -142,10 +142,12 @@ def compute_city_shade_index(city_code):
         median_exposure = float(np.median(valid))
         min_exposure = float(np.min(valid))
 
-        # SI per pixel, then mean
+        # SI per pixel, then aggregate
         si_per_pixel = 1.0 - (valid / max_exposure)
         mean_si = float(np.mean(si_per_pixel))
-        median_si = float(np.median(si_per_pixel))
+        std_si = float(np.std(si_per_pixel))
+        # Percentiles for distribution shape
+        p10, p25, p50, p75, p90 = np.percentile(si_per_pixel, [10, 25, 50, 75, 90])
         min_si = float(np.min(si_per_pixel))
         max_si = float(np.max(si_per_pixel))
 
@@ -155,6 +157,7 @@ def compute_city_shade_index(city_code):
 
     elapsed = time.time() - t0
     print(f"  max_exposure={max_exposure:.1f}, mean_SI={mean_si:.4f}, "
+          f"P10={p10:.3f} P50={p50:.3f} P90={p90:.3f}, "
           f"pixels={n_pixels:,}, area={street_area_m2/1e6:.2f} km2 ({elapsed:.1f}s)")
 
     return {
@@ -165,9 +168,15 @@ def compute_city_shade_index(city_code):
         'median_exposure': median_exposure,
         'min_exposure': min_exposure,
         'mean_SI': mean_si,
-        'median_SI': median_si,
+        'std_SI': std_si,
         'min_SI': min_si,
+        'P10_SI': float(p10),
+        'P25_SI': float(p25),
+        'median_SI': float(p50),
+        'P75_SI': float(p75),
+        'P90_SI': float(p90),
         'max_SI': max_si,
+        'IQR_SI': float(p75 - p25),
         'n_pixels': n_pixels,
         'street_area_m2': street_area_m2,
     }
@@ -261,6 +270,51 @@ def plot_02_si_vs_crown_diameter(df, out_dir):
     return merged, r_pear, r_spear
 
 
+def plot_05_si_distribution_per_city(df, out_dir):
+    """Box plot showing SI percentile distribution per city, sorted by median."""
+    sorted_df = df.sort_values('median_SI').reset_index(drop=True)
+
+    fig, ax = plt.subplots(figsize=(12, 9))
+
+    nat_avg = np.average(df['mean_SI'], weights=df['n_pixels'])
+
+    for i, row in sorted_df.iterrows():
+        color = ('forestgreen' if row['median_SI'] >= nat_avg
+                 else 'coral')
+        # Box: P25-P75
+        ax.barh(i, row['P75_SI'] - row['P25_SI'], left=row['P25_SI'],
+                height=0.6, color=color, alpha=0.7,
+                edgecolor='black', linewidth=0.5)
+        # Median line
+        ax.plot([row['median_SI'], row['median_SI']], [i - 0.3, i + 0.3],
+                color='black', linewidth=2)
+        # Whiskers: P10-P90
+        ax.plot([row['P10_SI'], row['P25_SI']], [i, i], color='black', linewidth=1)
+        ax.plot([row['P75_SI'], row['P90_SI']], [i, i], color='black', linewidth=1)
+        ax.plot([row['P10_SI'], row['P10_SI']], [i - 0.15, i + 0.15],
+                color='black', linewidth=1)
+        ax.plot([row['P90_SI'], row['P90_SI']], [i - 0.15, i + 0.15],
+                color='black', linewidth=1)
+
+    ax.set_yticks(range(len(sorted_df)))
+    ax.set_yticklabels([f"{r['city']} ({r['city_name']})"
+                        for _, r in sorted_df.iterrows()], fontsize=10)
+    ax.axvline(nat_avg, color='blue', linestyle='--', linewidth=2,
+               label=f'Weighted national mean = {nat_avg:.3f}')
+    ax.set_xlabel('Shade Index', fontsize=12)
+    ax.set_title('Per-City Shade Index Distribution\n'
+                 '(box = P25-P75, whiskers = P10-P90, vertical line = median)',
+                 fontsize=13)
+    ax.legend(fontsize=11, loc='lower right')
+    ax.set_xlim(left=0)
+    ax.grid(True, axis='x', alpha=0.3)
+    fig.tight_layout()
+    path = os.path.join(out_dir, '05_si_distribution_per_city.png')
+    fig.savefig(path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f"  Saved {path}")
+
+
 def plot_03_si_vs_tree_density(df, out_dir):
     """Correlation scatter: street tree density (trees/km^2) vs mean SI."""
     if not os.path.exists(STREET_TREES_EXCEL):
@@ -312,11 +366,19 @@ def plot_03_si_vs_tree_density(df, out_dir):
 def export_excel(df, filename):
     """Export shade index data to Excel."""
     with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-        cols = ['city', 'city_name', 'mean_SI', 'median_SI', 'min_SI', 'max_SI',
+        cols = ['city', 'city_name',
+                'mean_SI', 'std_SI', 'min_SI',
+                'P10_SI', 'P25_SI', 'median_SI', 'P75_SI', 'P90_SI',
+                'max_SI', 'IQR_SI',
                 'max_exposure', 'mean_exposure', 'median_exposure', 'min_exposure',
                 'n_pixels', 'street_area_m2']
         df_sorted = df.sort_values('mean_SI', ascending=False)
         df_sorted[cols].to_excel(writer, sheet_name='Shade Index', index=False)
+
+        # Dedicated percentile sheet for easy plotting in Excel
+        pct_cols = ['city', 'city_name', 'P10_SI', 'P25_SI', 'median_SI',
+                    'P75_SI', 'P90_SI']
+        df_sorted[pct_cols].to_excel(writer, sheet_name='SI Percentiles', index=False)
 
         # Summary sheet
         summary = pd.DataFrame({
@@ -380,13 +442,25 @@ A city's **average SI** is the mean of per-pixel SI values across all raster cel
 
 ![SI per City](plots_shade_index/01_si_per_city.png)
 
-| Rank | City | Name | Mean SI | Median SI | Street Area (km2) | Pixels |
-|------|------|------|--------:|----------:|------------------:|-------:|
+### Distribution Shape
+
+The mean alone hides the shape of each city's SI distribution. The box plot below shows the inter-quartile range (P25-P75) and 10th-90th percentile whiskers per city, so you can see how varied or uniform the shading is across each city's street network.
+
+![SI Distribution per City](plots_shade_index/05_si_distribution_per_city.png)
+
+### Per-City Statistics Table
+
+| Rank | City | Name | Mean SI | P10 | P25 | Median | P75 | P90 | IQR | Street Area (km²) |
+|------|------|------|--------:|----:|----:|-------:|----:|----:|----:|------------------:|
 """
     for rank, (_, row) in enumerate(sorted_df.iterrows(), 1):
         report += (f"| {rank} | {row['city']} | {row['city_name']} | "
-                   f"{row['mean_SI']:.4f} | {row['median_SI']:.4f} | "
-                   f"{row['street_area_m2']/1e6:.2f} | {row['n_pixels']:,} |\n")
+                   f"{row['mean_SI']:.4f} | "
+                   f"{row['P10_SI']:.3f} | {row['P25_SI']:.3f} | "
+                   f"{row['median_SI']:.3f} | "
+                   f"{row['P75_SI']:.3f} | {row['P90_SI']:.3f} | "
+                   f"{row['IQR_SI']:.3f} | "
+                   f"{row['street_area_m2']/1e6:.2f} |\n")
 
     report += f"""
 ## Correlation with Street Tree Crown Diameter
@@ -450,10 +524,13 @@ Interpretation: There is a **{strength_d} {direction_d} correlation** between st
 
 ## Files
 
-- `shade_index_data.xlsx` -- per-city SI data (for custom plotting)
+- `shade_index_data.xlsx` -- per-city SI data (for custom plotting); now includes
+  P10/P25/P50/P75/P90 percentiles and IQR plus a dedicated `SI Percentiles` sheet
 - `plots_shade_index/01_si_per_city.png` -- ranked bar chart
 - `plots_shade_index/02_si_vs_crown_diameter.png` -- SI vs crown diameter
 - `plots_shade_index/03_si_vs_tree_density.png` -- SI vs tree density
+- `plots_shade_index/05_si_distribution_per_city.png` -- per-city SI distribution
+  (box = P25-P75, whiskers = P10-P90)
 """
     return report
 
@@ -492,6 +569,7 @@ def main():
     plot_01_si_per_city(df, PLOT_DIR)
     corr = plot_02_si_vs_crown_diameter(df, PLOT_DIR)
     corr_density = plot_03_si_vs_tree_density(df, PLOT_DIR)
+    plot_05_si_distribution_per_city(df, PLOT_DIR)
 
     # Excel export
     print("\nExporting Excel...")
